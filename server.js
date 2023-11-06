@@ -17,7 +17,7 @@ const config = {
     user: 'postgres',
     database: 'moda_festa_BD',
     password: 'postgres',
-    port: 5435
+    port: 5435 //5432 5435
 };
 
 //definia conexao com o banco de dados.
@@ -38,10 +38,12 @@ sw.get('/listcliente', function (req, res) {
             client.query(`SELECT p.nome, p.telefone, p.cep, 
                                  p.logradouro, p.bairro, p.complemento, p.observacoes,   
                                  p.data_cadastro, 
-                                 p.username, p.password, p.data_ultimo_login, 
+                                 to_char(p.data_ultimo_login, \'dd/mm/yyyy\') as data_ultimo_login,
+                                 p.username, p.password, 
+                                 to_char(p.data_ultimo_login, \'dd/mm/yyyy\') as data_ultimo_login, 
                                  c.cpf, c.rg, c.cnpj, c.ie 
-                         FROM pessoas p left join clientes c on (p.nome=c.cpf) 
-                         order by p.nome asc;`, function (err, result) {
+                         FROM pessoas p left join clientes c on (p.id=c.id_pessoa) 
+                         order by p.id asc;`, function (err, result) {
                 done();
                 if (err) {
                     console.log(err);
@@ -54,13 +56,13 @@ sw.get('/listcliente', function (req, res) {
     });
 });
 
-sw.get('/deletecliente/:id', (req, res) => {
+sw.delete('/deletecliente/:id', (req, res) => {
     postgres.connect(function (err, client, done) {
         if (err) {
             console.log("Não consequiu acessar o banco de dados!")
         } else {
             var q1 = {
-                text: `delete from clientes where cpf = $1`,
+                text: `delete from clientes where id_pessoa = $1`,
                 values: [req.params.id]
             }
             var q2 = {
@@ -97,7 +99,7 @@ sw.post('/insertcliente', function (req, res, next) {
     postgres.connect(function (err, client, done) {
 
         if (err) {
-            console.log("Não coseguiu acessar o BD " + log);
+            console.log("Não coseguiu acessar o BD " + err);
             res.status(400).send(`{${err}}`);
         } else {
             var q1 = {
@@ -181,24 +183,24 @@ sw.post('/insertcliente', function (req, res, next) {
     });
 
 });
-sw.post('/updatecliente', function (req, res, next)  {
+sw.put('/updatecliente', function (req, res, next)  {
 
     postgres.connect(function (err, client, done) {
         if (err) {
             console.log("Nao conseguiu acessar o  BD " + err);
             res.status(400).send(`{${err}}`)
         } else {
+
             var q1 = {
-                text: `update pessoas set nome=$1, email=$2, telefone=$3, cep=$4, 
-                logradouro=$5, bairro=$6, numero=$7, complemento=$8, observacoes = $9, 
-                username=$10, password=$11 where id=$12
-                returning nome, email, telefone, cep, 
-                          logradouro, bairro, numero, complemento, observacoes,
-                          to_char(data_cadastro, \'dd/mm/yyyy\') as data_cadastro,
-                          username, password,
-                          to_char(data_ultimo_login, \'dd/mm/yyyy\') as data_ultimo_login`,
-                values: [
-                    req.body.id,
+                text: 'update pessoas set nome=$1, email=$2, telefone=$3, cep=$4, '+
+                'logradouro=$5, bairro=$6, numero=$7, complemento=$8, observacoes = $9, '+
+                'username=$10, password=$11 where id=$12 '+
+                'returning nome, email, telefone, cep, '+
+                          'logradouro, bairro, numero, complemento, observacoes, '+
+                         'to_char(data_cadastro, \'dd/mm/yyyy\') as data_cadastro, '+
+                          'username, password, '+
+                          'to_char(data_ultimo_login, \'dd/mm/yyyy\') as data_ultimo_login',
+                values: [ 
                     req.body.nome,
                     req.body.email,
                     req.body.telefone,
@@ -209,12 +211,12 @@ sw.post('/updatecliente', function (req, res, next)  {
                     req.body.complemento,
                     req.body.observacoes,
                     req.body.username,
-                    req.body.password
-
+                    req.body.password,
+                    req.body.id
                 ]
             }
             var q2 = {
-                text: `update clientes set cpf=$1, rg=$2, cnpj=$3, ie=$4, id_pessoa=$5
+                text: `update clientes set cpf=$1, rg=$2, cnpj=$3, ie=$4 where id_pessoa=$5
                        returning cpf, rg, cnpj, ie, id_pessoa `,
                 values: [
                     req.body.cpf,
@@ -244,7 +246,7 @@ sw.post('/updatecliente', function (req, res, next)  {
 
                             console.log('retornou 201 no updatecliente');
                             res.status(201).send({
-                                "id": result1.rows[0].codigo,
+                                "id": result1.rows[0].id,
                                 "nome": result1.rows[0].nome,
                                 "email": result1.rows[0].email,
                                 "telefone": result1.rows[0].telefone,
@@ -264,6 +266,7 @@ sw.post('/updatecliente', function (req, res, next)  {
                                     "cnpj": result2.rows[0].cnpj,
                                     "ie": result2.rows[0].ie,
                                     "id_pessoa": result2.rows[0].id_pessoa
+                                    
                                 }
                             });
                         }
@@ -298,13 +301,13 @@ sw.get('/listfuncionario', function (req, res) {
         }
     });
 });
-sw.get('/deletefuncionario/:id', function (req, res) {
+sw.delete('/deletefuncionario/:id', function (req, res) {
     postgres.connect(function (err, client, done) {
         if (err) {
             console.log("Não consequiu acessar o banco de dados!");
         } else {
             var q1 = {
-                text: `delete from funcionarios where numero_ctps = $1`,
+                text: `delete from funcionarios where id_pessoa = $1`,
                 values: [req.params.id]
             }
             var q2 = {
@@ -358,15 +361,16 @@ sw.post('/insertfuncionario', function (req, res, next) {
                     req.body.complemento,
                     req.body.observacoes,
                     req.body.username,
-                    req.body.password
+                    req.body.password,
+                    req.body.id
                 ]
             }
             var q2 = {
-                text: `insert into funcionarios (numero_ctps, data_contratacao, data_demissao, perfil)
-                       values($1, now(), now())
+                text: `insert into funcionarios (numero_ctps, data_contratacao, data_demissao, perfil, id_pessoa)
+                       values($1, now(), now(), $2, $3)
                        returning numero_ctps,
                                  to_char(data_contratacao, \'dd/mm/yyyy\') as data_contratacao,
-                                 to_char(data_demissao, \'dd/mm/yyyy\') as data_demissao`,
+                                 to_char(data_demissao, \'dd/mm/yyyy\') as data_demissao, perfil, id_pessoa`,
                 values: [
                     req.body.numero_ctps
                 ]
@@ -401,7 +405,11 @@ sw.post('/insertfuncionario', function (req, res, next) {
                                 "password": result1.rows[0].password,
                                 "data_ultimo_login": result1.rows[0].data_ultimo_login,
                                 "funcionario": {
-                                    "numero_ctps": result2.rows[0].numero_ctps
+                                    "numero_ctps": result2.rows[0].numero_ctps,
+                                    "data_contratacao": result2.rows[0].data_contratacao,
+                                    "data_demissao": result2.rows[0].data_demissao,
+                                    "perfil": result2.rows[0].perfil,
+                                    "id_pessoa": result2.rows[0].id_pessoa
                                 }
                             })
                         }
@@ -423,7 +431,7 @@ sw.put('/updatefuncionario', function (req, res, next) {
             var q1 = {
                 text: `update pessoas set nome=$1, email=$2, telefone=$3, cep=$4, 
                 logradouro=$5, bairro=$6, numero=$7, complemento=$8, observacoes = $9, 
-                username=$10, password=$11
+                username=$10, password=$11 where id =$12
                 returning nome, email, telefone, cep, 
                           logradouro, bairro, numero, complemento, observacoes,
                           to_char(data_cadastro, \'dd/mm/yyyy\') as data_cadastro,
@@ -437,9 +445,10 @@ sw.put('/updatefuncionario', function (req, res, next) {
                     req.body.bairro,
                     req.body.numero,
                     req.complemento,
-                    req.observacoes,
-                    req.username,
-                    req.body.password
+                    req.body.observacoes,
+                    req.body.username,
+                    req.body.password,
+                    req.body.id
 
                 ]
             }
@@ -503,7 +512,7 @@ sw.put('/updatefuncionario', function (req, res, next) {
     })
 })
 
-sw.get('/listperfil', function (req, res) {
+sw.get('/perfil/:id', function (req, res) {
 
     postgres.connect(function (err, client, done) {
 
@@ -512,23 +521,195 @@ sw.get('/listperfil', function (req, res) {
             console.log("Não conseguiu acessar o BD: " + err);
             res.status(400).send(`{${err}}`);
         } else {
-            client.query(`select * from perfis as p where id;`, function (err, result) {
-                done();
+            var q1 ={
+                text: 'select p.id, p.descricao, p.funcionalidade, 0 as funcionalidades from perfis p where id = $1 order by p.descricao asc;',
+                values: [req.params.id]
+            }
+            var q2 ={
+                text: 'select f.id, f.descricao from funcionalidades f, perfis_funcionarios pf where pf.id_funcionalidade and jp.id = $1',
+                values: [req.params.id]
+            }
+
+            client.query(q1, async function(err, result) {
                 if (err) {
                     console.log(err);
-                    res.status(400).send(`{${err}}`);
+                    res.status(500).send(`{${err}}`);
                 } else {
-                    res.status(200).send(result.rows)
+                    client.query(q2, async function(err, result1) {
+                        if (err) {
+                            console.log(err);
+                            res.status(500).send(`{${err}}`)
+                        } else {
+                            done();
+                            res.status(200).send({
+                             "id": result.rows[0].id,
+                             "descricao": result.rows[0].descricao,
+                             "funcionalidade": result.rows[0].funcionalidade,
+                             "funcionalidades": result1.rows
+                            })
+                        }
+                       
+                    })
+                  
                 }
-            });
-
+            })
+            
+           
 
         }
     });
 
 });
 
-sw.get('/deleteperfil/:id', function (req, res) {
+sw.get('/listperfil', function (req, res) {
+    
+    postgres.connect(function(err, client, done) {
+        
+        if (err) {
+            console.log("Não conseguiu acessar o BD :"+ err);
+            res.status(400).send(`{${err}}`);
+        } else {
+            
+            client.query('select p.id, p.descricao, 0 as funcionalidades from perfis p order by id', async function(err, result) {
+                
+                if (err) {
+                   console.log(err);
+                   res.status(400).send(`{${err}}`);
+                } else {
+                    
+                    for (let index = 0; index < result.rows.length; index++) {
+
+                        try {
+                            
+                            pf = await client.query('select f.id, f.descricao from funcionalidades f, '+ 
+                            'perfis_funcionalidades pf where pf.id_funcionalidade = f.id and pf.id_funcionalidade = $1', [result.rows[index].id_funcionalidade])
+
+                            result.rows[index].funcionalidades = pf.rows;
+
+                        } catch (err) {
+                            res.status(400).send(`{${err}}`)
+                        }
+                        
+                    }
+                    done();
+                    res.status(200).send(result.rows);
+                }
+            })
+
+        }
+    })
+})
+
+sw.post('/insertperfil', function (req, res, next) {
+
+    postgres.connect(function (err, client, done) {
+
+        if (err) {
+            console.log("Não conseguiu acessar o BD: " + err);
+            res.status(400).send(`{${err}}`);
+        } else {
+
+            var q = {
+                text: 'insert into perfis (descricao) values($1) returning descricao',
+                values: [req.body.descricao]
+            }
+            console.log(q);
+
+            client.query(q, async function (err, result) {
+                done();
+                if (err) {
+                    console.log('retornou 400 no insert');
+                    console.log(err);
+                    res.status(400).send(`{${err}}`);
+                } else {
+                    
+                    for (let index = 0; index < req.body.funcionalidades.length; index++) {
+                        
+                        try {
+                            
+                            await client.query('insert into perfis_funcionalidades (id_funcionalidade, id_perfil) values($1, $2)',
+                            [
+                                req.body.funcionalidades[0].id_funcionalidade, req.body.id_perfil
+                            ])
+                          
+
+                        } catch (err) {
+                            res.status(400).send(`{${err}}`);
+                        }
+                        
+                    }
+                    done();
+                    console.log('retornou 201 no insertperfil');
+                    res.status(201).send({
+                        "id": result.rows[0].id,
+                        "descricao": result.rows[0].descricao,
+                        "funcionalidades": req.body.funcionalidades});
+                }
+               
+
+            });
+
+        }
+    });
+});
+sw.put('/updateperfil', (req, res) => {
+
+    postgres.connect(function (err, client, done) {
+        if (err) {
+            console.log("Não conseguiu acessar o BD: " + err);
+            res.status(400).send(`{${err}}`);
+        } else {
+
+            var q = {
+                text: `update perfis set descricao=$1, where id =$2`,
+                values: [req.body.descricao, req.body.id]
+            }
+            console.log(q);
+        }
+
+        client.query(q, async function (err, result) {
+            done();
+            if (err) {
+                console.log("Erro no update perfis: " + err);
+                res.status(400).send(`{${err}}`);
+            } else {
+               
+                try {
+                    
+                    await client.query('delete from perfis_funcionalidades pf where pr.id_perfil = $1',
+                    [req.body.id_perfil])
+                    for (let index = 0; index < req.body.funcionalidades.length; index++) {
+                        
+                        try {
+                            
+                            await client.query('insert into perfis_funcionalidades (id_funcionalidade, id_perfil) values ($1, $2) ',
+                            [req.body.funcionalidades[i].id_funcionalidade, req.body.id_perfil])
+
+                        } catch (err) {
+                            res.status(400).send(`{${err}}`);
+                        }
+                        
+                    }
+                } catch (err) {
+                    res.status(400).send(`{${err}}`);
+                }
+
+                done();
+
+                console.log('retornou 201 no updateperfil');
+                res.status(201).send({
+                    "id": result.rows[0].id,
+                    "descricao": result.rows[0].descricao,
+                    "funcionalidade": result.rows[0].funcionalidade,
+                    "funcionalidades": req.body.funcionalidades
+                });
+            }
+
+        });
+    });
+});
+
+sw.delete('/deleteperfil/:id', function (req, res) {
 
     postgres.connect(function (err, client, done) {
         if (err) {
@@ -553,64 +734,7 @@ sw.get('/deleteperfil/:id', function (req, res) {
     });
 });
 
-sw.post('/insertperfil', function (req, res, next) {
 
-    postgres.connect(function (err, client, done) {
-
-        if (err) {
-            console.log("Não conseguiu acessar o BD: " + err);
-            res.status(400).send(`{${err}}`);
-        } else {
-
-            var q = {
-                text: `insert into perfis (descricao)
-                       values($1), 
-                       returning descricao`,
-                values: [req.body.descricao]
-            }
-            console.log(q);
-
-            client.query(q, function (err, result) {
-                done();
-                if (err) {
-                    console.log('retornou 400 no insert');
-                    console.log(err);
-                    res.status(400).send(`{${err}}`);
-                } else {
-                    console.log('retornou 201 no insertperfil');
-                    res.status(201).send(result.rows[0])
-                }
-            });
-
-        }
-    });
-});
-sw.post('/updateperfil', (req, res) => {
-
-    postgres.connect(function (err, client, done) {
-        if (err) {
-            console.log("Não conseguiu acessar o BD: " + err);
-            res.status(400).send(`{${err}}`);
-        } else {
-
-            var q = {
-                text: `update perfis set descricao=$1, where id =$2`,
-                values: [req.body.descricao, req.body.id]
-            }
-            console.log(q);
-        }
-
-        client.query(q, function (err, result) {
-            done();
-            if (err) {
-                console.log("Erro no update perfis: " + err);
-                res.status(400).send(`{${err}}`);
-            } else {
-                res.status(200).send(req.body);
-            }
-        });
-    });
-});
 sw.get('/listfuncionalidade', function (req, res, next) {
     postgres.connect(function (err, client, done) {
 
@@ -618,46 +742,20 @@ sw.get('/listfuncionalidade', function (req, res, next) {
             console.log("Nao conseguiu acessar o  BD " + err);
             res.status(400).send(`{${err}}`);
         } else {
-            client.query(`select descricao from funcionalidades where id`, function (err, result) {
+            client.query('select descricao from funcionalidades order by id', function (err, result) {
                 done();
                 if (err) {
                     console.log(err);
                     res.status(400).send(`{${err}}`);
                 } else {
-                    res.status(200).send(result)
+                    res.status(200).send(result.rows)
                 }
             })
 
         }
     })
 })
-sw.get('/deletefuncionalidade:id', function (req, res, next) {
 
-    postgres.connect(function (err, client, done) {
-
-        if (err) {
-
-            console.log("Nao conseguiu acessar o  BD " + err);
-            res.status(400).send(`{${err}}`);
-        } else {
-
-            var q = {
-                text: 'delete from funcionalidades where id =$1',
-                values: [req.params.id]
-            }
-            client.query(q, function (err, result) {
-                done();
-                if (err) {
-                    console.log(err);
-                    res.status(200).send({ "id": req.params.id });
-                } else {
-
-                }
-            });
-
-        }
-    });
-});
 
 sw.post('/insertfuncionalidade', function (req, res, next) {
 
@@ -670,9 +768,7 @@ sw.post('/insertfuncionalidade', function (req, res, next) {
         } else {
 
             var q = {
-                text: `insert into perfis (descricao)
-                       values($1), 
-                       returning descricao`,
+                text: 'insert into funcionalidades (descricao) values($1) returning descricao',
                 values: [req.body.descricao]
             }
             console.log(q);
@@ -693,7 +789,7 @@ sw.post('/insertfuncionalidade', function (req, res, next) {
     });
 });
 
-sw.post('/updatefuncionalidade', (req, res) => {
+sw.put('/updatefuncionalidade', (req, res) => {
 
     postgres.connect(function (err, client, done) {
         if (err) {
@@ -703,7 +799,7 @@ sw.post('/updatefuncionalidade', (req, res) => {
         } else {
 
             var q = {
-                text: `update funcionalidade set descricao=$1 where id = $2`,
+                text: 'update funcionalidades set descricao=$1 where id = $2',
                 values: [req.body.descricao, req.body.id]
             }
             console.log(q);
@@ -722,63 +818,10 @@ sw.post('/updatefuncionalidade', (req, res) => {
     });
 });
 
-sw.get('/perfil_funcionario', function (req, res) {
+sw.delete('/deletefuncionalidade/:id', function (req, res, next) {
 
     postgres.connect(function (err, client, done) {
 
-        if (err) {
-
-            console.log("Não conseguiu acessar o BD :" + err);
-            res.status(400).send(`{${err}}`);
-        } else {
-            client.query(`select p.id, f.id
-                          from perfis as p inner join funcionalidades as f
-                          on p.id = f.id 
-                          order by p.id;`, function (err, result) {
-                done();
-                if (err) {
-
-                    console.log(err);
-                    res.status(400).send(`{${err}}`);
-                } else {
-                    res.status(200).send(result.rows);
-                }
-            });
-        }
-    });
-});
-
-sw.get('/deleteperfil_funcionario/:id', (req, res) => {
-
-    postgres.connect(function (err, client, done) {
-        if (err) {
-
-            console.log("Não conseguiu acessar o banco de dados!" + err);
-            res.status(400).send(`{${err}}`);
-        } else {
-            var q = {
-                text: `delete from perfil_funcionario`,
-                values: [req.params.id]
-
-            }
-            client.query(q1, function (err, result) {
-
-                if (err) {
-
-                    console.log(err);
-                    res.status(400).send(`{${err}}`);
-                } else {
-                    console.log('retornou 201 no deleteperfil_funcionario');
-                    res.status(201).send({ "codigo": result.rows[0].id });
-                }
-            })
-
-        }
-    })
-})
-
-sw.post('/insertperfil_funcionario', function (req, res, next) {
-    postgres.connect(function (err, client, done) {
         if (err) {
 
             console.log("Nao conseguiu acessar o  BD " + err);
@@ -786,51 +829,20 @@ sw.post('/insertperfil_funcionario', function (req, res, next) {
         } else {
 
             var q = {
-                text: `insert into perfil_funcionario (id_funcionalidade, id_perfil) 
-                   returning id_funcionalidade, id_perfil`,
-                values: [req.body.id_funcionalidade, req.body.id_perfil]
+                text: 'delete from funcionalidades where id =$1',
+                values: [req.params.id]
             }
-            console.log(q);
-
             client.query(q, function (err, result) {
                 done();
                 if (err) {
-                    console.log('retornou 400 no insert');
                     console.log(err);
-                } else {
-                    console.log('retornou 201 no insertperfil_funcionario');
-                    res.status(201).send(result.rows[0]);
-                }
-            });
-
-        }
-    })
-});
-
-sw.post('/updateperfil_funcionario', (req, res) => {
-
-    postgres.connect(function (err, client, done) {
-        if (err) {
-
-            console.log("Não conseguiu acessar o BD: " + err);
-            res.status(400).send(`{${err}}`);
-        } else {
-
-            var q = {
-                text: `update perfil_funcionario set id_funcionalidade=$1, id_perfil=$2`,
-                values: [req.body.id_funcionalidade, req.id_perfil]
-            }
-            console.log(id);
-
-            client.query(q, function (err, result) {
-                done();
-                if (err) {
-                    console.log("Erro no update modo: " + err);
                     res.status(400).send(`{${err}}`);
                 } else {
-                    res.status(200).send(req.body);
+                    console.log('retornou 201 no deletefuncionalidade')
+                    res.status(201).send({ "id": req.params.id})
                 }
             });
+
         }
     });
 });
@@ -843,17 +855,33 @@ sw.get('/listreserva', function (req, res) {
             console.log("Não conseguiu acessar o BD :" + err);
             res.status(400).send(`{${err}}`);
         } else {
-            client.query(`select id, data_inicio, data_fim, valor, valor_entrega,
-                                 valor_total, observacoes, cliente, funcionario, status_reserva
-                          from Reservas
-                          order by id;`, function (err, result) {
+            client.query('select id, data_inicio, data_fim, valor, valor_entrega, valor_total, observacoes, cliente, funcionario, status_reserva, 0 as produtos'+
+                        '  from Reservas '+
+                          'order by id;', async function (err, result) {
                 done();
                 if (err) {
 
                     console.log(err);
                     res.status(400).send(`{${err}}`);
                 } else {
+                    for (let index = 0; index < result.rows.length; index++) {
+
+                        try {
+                            
+                            pf = await client.query('select p.id, p.descricao,  p.observacoes, p.valor_custo, p.valor_aluguel, pvalor_venda, p.tipo_produto from produtos p, '+ 
+                            'perfis_funcionalidades pf where pf.id_funcionalidade = f.id and pf.id_funcionalidade = $1', [result.rows[index].id_funcionalidade])
+
+                            result.rows[index].funcionalidades = pf.rows;
+
+                        } catch (err) {
+                            res.status(400).send(`{${err}}`)
+                        }
+                        
+                    }
+                    done();
                     res.status(200).send(result.rows);
+
+                   
                 }
             });
         }
@@ -897,23 +925,41 @@ sw.post('/insertreserva', function (req, res, next) {
         } else {
 
             var q = {
-                text: `insert into Reservas (data_inicio, data_fim, valor, valor_entrega, valor_total, observacoes, cliente, funcionario, status_reserva)
-                   values(now(), now(),$1, $2, $3, $4, $5, $6, $7) 
-                   returning  to_char(data_inicio, \'dd/mm/yyyy\') as data_inicio, to_char(data_fim, \'dd/mm/yyyy\'),
-                              valor, valor_entrega, valor_total, observacoes, cliente, funcionario, status_reserva
-                  `,
-                values: [req.body.data_inicio, req.body.data_fim, req.body.valor,
-                req.body.valor_entrega, req.body.valor_total, req.body.observacoes,
-                req.body, cliente, req.body.funcionario, req.body.status_reserva]
+                text: 'insert into Reservas (data_inicio, data_fim, valor, valor_entrega, valor_total, observacoes, cliente, funcionario, status_reserva) ' +
+                   'values(now(), now(),$1, $2, $3, $4, $5, $6, $7) '+
+                   'returning  to_char(data_inicio, \'dd/mm/yyyy\') as data_inicio, to_char(data_fim, \'dd/mm/yyyy\'), valor, valor_entrega, valor_total, observacoes, cliente, funcionario, status_reserva'
+,
+                values: [req.body.valor,
+                        req.body.valor_entrega, 
+                        req.body.valor_total, 
+                        req.body.observacoes,
+                        req.body.cliente, 
+                        req.body.funcionario, 
+                        req.body.status_reserva]
             }
             console.log(q);
 
-            client.query(q, function (err, result) {
+            client.query(q, async function (err, result) {
                 done();
                 if (err) {
                     console.log('retornou 400 no insert');
                     console.log(err);
                 } else {
+                    for (let index = 0; index < req.body.produtos.length; index++) {
+                        
+                        try {
+                            
+                            await client.query('insert into reservas_produtos (id_reserva, id_produto) values($1, $2)',
+                            [
+                                req.body.funcionalidades[0].id_produto, req.body.id_reserva
+                            ])
+                          
+
+                        } catch (err) {
+                            res.status(400).send(`{${err}}`);
+                        }
+                        
+                    }
                     console.log('retornou 201 no insertreserva');
                     res.status(201).send(result.rows[0]);
                 }
@@ -937,7 +983,7 @@ sw.post('/updatereserva', function (req, res, next) {
                    values(now(), now(),$1, $2, $3, $4, $5, $6, $7)`,
                 values: [req.body.data_inicio, req.body.data_fim, req.body.valor,
                 req.body.valor_entrega, req.body.valor_total, req.body.observacoes,
-                req.body, cliente, req.body.funcionario, req.body.status_reserva]
+                req.body.cliente, req.body.funcionario, req.body.status_reserva]
             }
             console.log(q);
 

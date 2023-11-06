@@ -19,9 +19,7 @@ CREATE TABLE pessoas(
 
 CREATE TABLE perfis (
 	id serial not null primary key ,
-	descricao text not null,
-	funcionalidade integer not null,
-	foreign key (funcionalidade) references pessoas (id)
+	descricao text not null
 );
 
 CREATE TABLE funcionalidades (

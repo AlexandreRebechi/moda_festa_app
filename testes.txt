@@ -1,0 +1,42 @@
+{
+	"nome": "nome1",
+	"email": "email1@.com",
+	"telefone": "1223456798",
+	"cep": "345435",
+	"logradouro": "logradouro1",
+	"bairro": "bairro 1",
+	"numero": "4234234",
+	"complemento": "complemento1",
+	"observacoes": "observacoes1",
+	"data_cadastro": "{% now 'iso-8601', '' %}",
+	"username": "username1",	
+	"password": "123456",
+	"data_ultimo_login": "{% now 'iso-8601', '' %}",
+		"cpf": "45800648018",
+		"rg": "295513883",
+		"cnpj": "79373476000128",
+		"ie": "9688888503"
+}
+{
+	"id": 4,
+	"nome": "nome2",
+	"email": "email2@.com",
+	"telefone": "1223456798",
+	"cep": "99052240",
+	"logradouro": "logradouro2",
+	"bairro": "bairro2",
+	"numero": "543432",
+	"complemento": "complemento2",
+	"observacoes": "observacoes2",
+	"data_cadastro": "{% now 'iso-8601', '' %}",
+	"username": "username2",	
+	"password": "123456",
+	"data_ultimo_login": "{% now 'iso-8601', '' %}",
+		"cpf": "45800648018",
+		"rg": "238942910",
+		"cnpj": "79373476000128",
+		"ie": "9688888503"
+}
+{
+	"id": "4"
+}
