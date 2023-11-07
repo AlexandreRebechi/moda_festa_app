@@ -17,7 +17,7 @@ const config = {
     user: 'postgres',
     database: 'moda_festa_BD',
     password: 'postgres',
-    port: 5435 //5432 5435
+    port: 5432 //5432 5435
 };
 
 //definia conexao com o banco de dados.
@@ -716,20 +716,33 @@ sw.delete('/deleteperfil/:id', function (req, res) {
             console.log("Não conseguiu acessar o banco de dados!" + err);
             res.status(400).send(`{${err}}`);
         } else {
-            var q = {
+
+            var q0 = {
+                text: `delete FROM perfis_funcionalidades where id = $1`
+            }
+
+            var q1 = {
                 text: `delete FROM perfis where id = $1`,
                 var: [req.params.id]
             }
-            client.query(q, function (err, result) {
-                done();
+            client.query(q0, function (err, result) {
+                
                 if (err) {
                     console.log(err);
                     res.status(400).send(`{${err}}`);
                 } else {
-                    console.log('retornou 201 no deleteperfil')
-                    res.status(200).send({ "id": result.rows[0].id })
+                    
+                    client.query(q1, function (err, result) {
+                        done();
+                        if (err) {
+                            console.log(err);
+                            res.status(400).send(`{${err}}`);
+                        } else {
+                            res.status(200).send({'id': req.params.id});
+                        }
+                    })
                 }
-            });
+            })
         }
     });
 });
@@ -856,9 +869,9 @@ sw.get('/listreserva', function (req, res) {
             res.status(400).send(`{${err}}`);
         } else {
             client.query('select id, data_inicio, data_fim, valor, valor_entrega, valor_total, observacoes, cliente, funcionario, status_reserva, 0 as produtos'+
-                        '  from Reservas '+
+                        '  from reservas '+
                           'order by id;', async function (err, result) {
-                done();
+         
                 if (err) {
 
                     console.log(err);
@@ -868,10 +881,10 @@ sw.get('/listreserva', function (req, res) {
 
                         try {
                             
-                            pf = await client.query('select p.id, p.descricao,  p.observacoes, p.valor_custo, p.valor_aluguel, pvalor_venda, p.tipo_produto from produtos p, '+ 
-                            'perfis_funcionalidades pf where pf.id_funcionalidade = f.id and pf.id_funcionalidade = $1', [result.rows[index].id_funcionalidade])
+                            rp = await client.query('select pro.id, p.descricao,  pro.observacoes, pro.valor_custo, pro.valor_aluguel, pro.valor_venda, pro.tipo_produto from produtos pro, '+ 
+                            'reservas_produtos rp where rp.id_produto = p.id and pf.id_produto = $1', [result.rows[index].id_produto])
 
-                            result.rows[index].funcionalidades = pf.rows;
+                            result.rows[index].produtos = rp.rows;
 
                         } catch (err) {
                             res.status(400).send(`{${err}}`)
@@ -888,30 +901,39 @@ sw.get('/listreserva', function (req, res) {
     });
 });
 
-sw.get('/deletereserva', (req, res) => {
+sw.delete('/deletereserva/:id', (req, res) => {
     postgres.connect(function (err, client, done) {
         if (err) {
-
             console.log("Não conseguiu acessar o banco de dados!" + err);
             res.status(400).send(`{${err}}`);
         } else {
-            var q = {
-                text: `delete from Reservas`,
-                values: [req.params.id]
 
+            var q0 = {
+                text: `delete FROM reservas_produtos where id = $1`
             }
-            client.query(q1, function (err, result) {
 
+            var q1 = {
+                text: `delete FROM reservas where id = $1`,
+                var: [req.params.id]
+            }
+            client.query(q0, function (err, result) {
+                
                 if (err) {
-
                     console.log(err);
                     res.status(400).send(`{${err}}`);
                 } else {
-                    console.log('retornou 201 no deleteperfil_funcionario');
-                    res.status(201).send({ "id": result.rows[0].id });
+                    
+                    client.query(q1, function (err, result) {
+                        done();
+                        if (err) {
+                            console.log(err);
+                            res.status(400).send(`{${err}}`);
+                        } else {
+                            res.status(200).send({'id': req.params.id});
+                        }
+                    })
                 }
-            });
-
+            })
         }
     });
 });
@@ -968,7 +990,7 @@ sw.post('/insertreserva', function (req, res, next) {
         }
     });
 });
-sw.post('/updatereserva', function (req, res, next) {
+sw.put('/updatereserva', function (req, res, next) {
     postgres.connect(function (err, client, done) {
         if (err) {
 
@@ -987,14 +1009,33 @@ sw.post('/updatereserva', function (req, res, next) {
             }
             console.log(q);
 
-            client.query(q, function (err, result) {
+            client.query(q, async function (err, result) {
                 done();
                 if (err) {
-                    console.log('retornou 400 no update');
                     console.log(err);
+                    console.log('retornou 400 no update');
+                    res.status(400).send(`{${err}}`);
                 } else {
-                    console.log('retornou 201 no updatereserva');
-                    res.status(201).send(result.rows[0]);
+                    try {
+                        
+                        await client.query(`delete into reservas_produtos rp where rp.id = $1`, [res.body.id])
+
+                        for (let index = 0; index < array.length; index++) {
+                            
+                            try {
+                                
+                                await client.query(`insert into reservas_produtos (id_reserva, id_produto) values($1, $2)`, [req.body.id, req.body[i].produtos])
+
+                            } catch (err) {
+                               
+                                res.status(400).send(`{${err}}`);
+                            }
+                            
+                        }
+
+                    } catch (err) {
+                        res.status(400).send(`{${err}}`);
+                    }
                 }
             });
 
@@ -1335,14 +1376,36 @@ sw.get('/listlocacao', function (req, res) {
         } else {
 
             client.query(`select id, data_retirada, data_previsao_entrega, data_entrega, 
-                              data_previsao_pagamento, valor_total, valor_pago, observacoes, funcionario, tipos_pagamento
+                              data_previsao_pagamento, valor_total, valor_pago, observacoes, 
+                              funcionario, tipos_pagamento, 0 as reservas
                       from locacoes
-                      order by id`, function (err, result) {
+                      order by id`, async function (err, result) {
                 done();
                 if (err) {
                     console.log(err);
                     res.status(400).send(`{${err}}`);
                 } else {
+
+                    if (err) {
+                        console.log(err);
+                        res.status(400).send(`{${err}}`);
+                    } else {
+                        
+                        for (let index = 0; index < result.rows.length; index++) {
+                            
+                            try {
+                                
+                                lr = await client.query(`select id, data_inicio, data_fim, valor, valor_entrega, valor_total, observacoes, cliente, funcionario, status_reserva, 0 as produtos
+                                                          from reservas r, locacoes_reservas lr where lr.id=r.id and lr.id_reserva`, [result.rows[i].id])
+
+                            } catch (err) {
+                                res.status(400).send(`{${err}}`);
+                            }
+                            
+                        }
+                    }
+
+                    done();
                     res.status(200).send(result.rows);
                 }
             });
@@ -1446,129 +1509,6 @@ sw.post('/updatelocacao', (req, res) => {
     });
 });
 
-sw.get('/listlocacaoreserva', function (req, res) {
-
-    postgres.connect(function (err, client, done) {
-        if (err) {
-            console.log("Não conseguiu acessar o banco de dados" + err);
-            res.status(400).send(`{${err}}`);
-        } else {
-
-            client.query(`select id_locacao, id_reserva
-                      from locacoes_reservas
-                      order by id_locacao, id_reserva`, function (err, result) {
-                done();
-                if (err) {
-                    console.log(err);
-                    res.status(400).send(`{${err}}`);
-                } else {
-                    res.status(200).send(result.rows);
-                }
-            });
-
-        }
-    });
-
-});
-
-sw.get('/deletelocacaoreserva/:id', function (req, res, next) {
-
-    postgres.connect(function (err, client, done) {
-        if (err) {
-            console.log(err);
-            res.status(400).send(`{${err}}`);
-        } else {
-            var q1 = {
-                text: `delete from locacoes_reservas where = $id`,
-                values: [req.params.id]
-            }
-            var q2 = {
-                text: `delete from locacoes_reservas where = $id`,
-                values: [req.params.id]
-            }
-
-            client.query(q1, function (err, result) {
-
-                if (err) {
-                    console.log(err);
-                    res.status(400).send(`{${err}}`)
-                } else {
-                    client.query(q2, function (err, result) {
-                        done(); // closing the connection;
-                        if (err) {
-                            console.log(err);
-                            res.status(400).send(`{${err}}`);
-                        } else {
-                            res.status(200).send({ 'id': req.params.id }) //retorna o id deletado 
-
-                        }
-                    })
-
-
-                }
-            })
-        }
-    });
-});
-
-sw.post('/insertlocacaoreserva', function (req, res, next) {
-    postgres.connect(function (err, client, done) {
-        if (err) {
-            console.log("Não conseguiu acessar o banco de dados" + err);
-            res.status(400).send(`{${err}}`);
-        } else {
-            var q = {
-                text: `insert into locacoes_reservas (id_locacao, id_reserva) 
-                       values($1, $2)
-                       returning(id_locacao, id_reserva)`,
-                values: [req.body.id_locacao, req.body.id_reserva]
-            }
-            console.log(q);
-
-            client.query(q, function (err, result) {
-                done();
-                if (err) {
-                    console.log('retornou 400 no insert');
-                    console.log(err);
-                    res.status(400).send(`{${err}}`);
-                } else {
-                    console.log('retornou 201 no insertlocacaoreserva');
-                    res.status(201).send(result.rows[0]);
-                }
-
-            });
-        }
-    });
-});
-
-sw.post('/updatelocacaoreserva', (req, res) => {
-    postgres.connect(function (err, client, done) {
-        if (err) {
-            console.log("Não conseguiu acessar o banco de dados" + err);
-            res.status(400).send(`{${err}}`);
-        } else {
-            var q = {
-                text: `update locacoes_reservas set id_locacao=$1, id_reserva=$2`,
-                values: [
-                    req.body.id_locacao,
-                    req.body.id_reserva]
-            }
-            console.log(q);
-
-            client.query(q, function (err, result) {
-                done();
-                if (err) {
-                    console.log('retornou 400 no update ');
-                    res.status(400).send(`{${err}}`);
-                } else {
-                    console.log('retornou 201 no updatelocacao');
-                    res.status(200).send(req.body);
-                }
-
-            });
-        }
-    });
-});
 
 sw.get('/listparcelamento', function (req, res) {
 
