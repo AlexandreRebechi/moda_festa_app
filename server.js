@@ -17,7 +17,7 @@ const config = {
     user: 'postgres',
     database: 'moda_festa_BD',
     password: 'postgres',
-    port: 5432 //5432 5435
+    port: 5435 //5432 5435
 };
 
 //definia conexao com o banco de dados.
@@ -570,21 +570,20 @@ sw.get('/listperfil', function (req, res) {
             res.status(400).send(`{${err}}`);
         } else {
             
-            client.query('select p.id, p.descricao, 0 as funcionalidades from perfis p order by id', async function(err, result) {
+            client.query('select p.id, p.descricao, 0 as funcionalidades from perfis p order by id asc;', async function(err, result) {
                 
                 if (err) {
                    console.log(err);
                    res.status(400).send(`{${err}}`);
                 } else {
                     
-                    for (let index = 0; index < result.rows.length; index++) {
+                    for (var i = 0; i < result.rows.length; i++) {
 
                         try {
                             
-                            pf = await client.query('select f.id, f.descricao from funcionalidades f, '+ 
-                            'perfis_funcionalidades pf where pf.id_funcionalidade = f.id and pf.id_funcionalidade = $1', [result.rows[index].id_funcionalidade])
+                            pf = await client.query('select f.id, f.descricao from funcionalidades f, perfis_funcionalidades pf where pf.id_funcionalidade = f.id and pf.id_funcionalidade = $1', [result.rows[i].id])
 
-                            result.rows[index].funcionalidades = pf.rows;
+                            result.rows[i].funcionalidades = pf.rows;
 
                         } catch (err) {
                             res.status(400).send(`{${err}}`)
@@ -716,24 +715,24 @@ sw.delete('/deleteperfil/:id', function (req, res) {
             console.log("Não conseguiu acessar o banco de dados!" + err);
             res.status(400).send(`{${err}}`);
         } else {
-
             var q0 = {
-                text: `delete FROM perfis_funcionalidades where id = $1`
+                text: 'delete FROM perfis where id = $1',
+                var: [req.params.id]
             }
 
             var q1 = {
-                text: `delete FROM perfis where id = $1`,
-                var: [req.params.id]
+                text: 'delete FROM perfis_funcionalidades where id = $1',
+                values: [req.params.id]
             }
+
             client.query(q0, function (err, result) {
-                
+                done();
                 if (err) {
                     console.log(err);
                     res.status(400).send(`{${err}}`);
                 } else {
-                    
-                    client.query(q1, function (err, result) {
-                        done();
+                    client.query(q1, function(err, result) {
+                        
                         if (err) {
                             console.log(err);
                             res.status(400).send(`{${err}}`);
@@ -742,7 +741,7 @@ sw.delete('/deleteperfil/:id', function (req, res) {
                         }
                     })
                 }
-            })
+            });
         }
     });
 });
@@ -869,9 +868,9 @@ sw.get('/listreserva', function (req, res) {
             res.status(400).send(`{${err}}`);
         } else {
             client.query('select id, data_inicio, data_fim, valor, valor_entrega, valor_total, observacoes, cliente, funcionario, status_reserva, 0 as produtos'+
-                        '  from reservas '+
+                        '  from Reservas '+
                           'order by id;', async function (err, result) {
-         
+                done();
                 if (err) {
 
                     console.log(err);
@@ -881,8 +880,8 @@ sw.get('/listreserva', function (req, res) {
 
                         try {
                             
-                            rp = await client.query('select pro.id, p.descricao,  pro.observacoes, pro.valor_custo, pro.valor_aluguel, pro.valor_venda, pro.tipo_produto from produtos pro, '+ 
-                            'reservas_produtos rp where rp.id_produto = p.id and pf.id_produto = $1', [result.rows[index].id_produto])
+                            rp = await client.query('select p.id, p.descricao,  p.observacoes, p.valor_custo, p.valor_aluguel, p.valor_venda, p.tipo_produto from produtos p, '+ 
+                            'reservas_produtos pf where rp.id_produto = p.id and rp.id_produto = $1', [result.rows[index].id_produto])
 
                             result.rows[index].produtos = rp.rows;
 
@@ -904,36 +903,39 @@ sw.get('/listreserva', function (req, res) {
 sw.delete('/deletereserva/:id', (req, res) => {
     postgres.connect(function (err, client, done) {
         if (err) {
+
             console.log("Não conseguiu acessar o banco de dados!" + err);
             res.status(400).send(`{${err}}`);
         } else {
-
             var q0 = {
-                text: `delete FROM reservas_produtos where id = $1`
+                text: `delete from reservas_produtos where id = $1`,
+                values: [req.params.id]
+
             }
 
             var q1 = {
-                text: `delete FROM reservas where id = $1`,
-                var: [req.params.id]
+                text: `delete reservas from where id = $2`,
+                values: [req.params.id]
             }
             client.query(q0, function (err, result) {
-                
+
                 if (err) {
+
                     console.log(err);
                     res.status(400).send(`{${err}}`);
                 } else {
-                    
-                    client.query(q1, function (err, result) {
-                        done();
+                   client.query(q1, function(err, result) {
                         if (err) {
                             console.log(err);
                             res.status(400).send(`{${err}}`);
                         } else {
-                            res.status(200).send({'id': req.params.id});
+                            res.status(200).send({'id': req.params.id});  
                         }
-                    })
+
+                   })
                 }
-            })
+            });
+
         }
     });
 });
@@ -947,7 +949,7 @@ sw.post('/insertreserva', function (req, res, next) {
         } else {
 
             var q = {
-                text: 'insert into Reservas (data_inicio, data_fim, valor, valor_entrega, valor_total, observacoes, cliente, funcionario, status_reserva) ' +
+                text: 'insert into reservas (data_inicio, data_fim, valor, valor_entrega, valor_total, observacoes, cliente, funcionario, status_reserva) ' +
                    'values(now(), now(),$1, $2, $3, $4, $5, $6, $7) '+
                    'returning  to_char(data_inicio, \'dd/mm/yyyy\') as data_inicio, to_char(data_fim, \'dd/mm/yyyy\'), valor, valor_entrega, valor_total, observacoes, cliente, funcionario, status_reserva'
 ,
@@ -999,43 +1001,31 @@ sw.put('/updatereserva', function (req, res, next) {
         } else {
 
             var q = {
-                text: `update Reservas set (id=$1, valor=$2, valor_entrega=$3, valor_total=$4, observacoes=$5, cliente=$9, funcionario=$10, status_reserva=$11) 
+                text: `update Reservas set ( valor=$1, valor_entrega=$2, valor_total=$3, observacoes=$4, cliente=$5, funcionario=$6, status_reserva=$7 where id = $8) 
                    returning  to_char(data_inicio, \'dd/mm/yyyy\') as data_inicio, to_char(data_fim, \'dd/mm/yyyy\') as data_fim, 
                               valor, valor_entrega, valor_total, observacoes, cliente, funcionario, status_reserva
                    values(now(), now(),$1, $2, $3, $4, $5, $6, $7)`,
-                values: [req.body.data_inicio, req.body.data_fim, req.body.valor,
-                req.body.valor_entrega, req.body.valor_total, req.body.observacoes,
-                req.body.cliente, req.body.funcionario, req.body.status_reserva]
+                values: [
+                    req.body.data_inicio, 
+                    req.body.data_fim, 
+                    req.body.valor,
+                    req.body.valor_entrega, 
+                    req.body.valor_total, 
+                    req.body.observacoes,
+                    req.body.cliente, 
+                    req.body.funcionario, 
+                    req.body.status_reserva]
             }
             console.log(q);
 
-            client.query(q, async function (err, result) {
+            client.query(q, function (err, result) {
                 done();
                 if (err) {
-                    console.log(err);
                     console.log('retornou 400 no update');
-                    res.status(400).send(`{${err}}`);
+                    console.log(err);
                 } else {
-                    try {
-                        
-                        await client.query(`delete into reservas_produtos rp where rp.id = $1`, [res.body.id])
-
-                        for (let index = 0; index < array.length; index++) {
-                            
-                            try {
-                                
-                                await client.query(`insert into reservas_produtos (id_reserva, id_produto) values($1, $2)`, [req.body.id, req.body[i].produtos])
-
-                            } catch (err) {
-                               
-                                res.status(400).send(`{${err}}`);
-                            }
-                            
-                        }
-
-                    } catch (err) {
-                        res.status(400).send(`{${err}}`);
-                    }
+                    console.log('retornou 201 no updatereserva');
+                    res.status(201).send(result.rows[0]);
                 }
             });
 
@@ -1164,7 +1154,7 @@ sw.get('/listfoto', function (req, res) {
             console.log("Não conseguiu acessar o BD: " + err);
             res.status(400).send(`{${err}}`);
         } else {
-            client.query(`select id, descricao, b64, 
+            client.query(`select id, descricao, b64, produto_id, 
                           produto_id from Fotos order by id asc;`, function (err, result) {
 
                 done();
@@ -1376,8 +1366,7 @@ sw.get('/listlocacao', function (req, res) {
         } else {
 
             client.query(`select id, data_retirada, data_previsao_entrega, data_entrega, 
-                              data_previsao_pagamento, valor_total, valor_pago, observacoes, 
-                              funcionario, tipos_pagamento, 0 as reservas
+                              data_previsao_pagamento, valor_total, valor_pago, observacoes, funcionario, tipos_pagamento, 0 as reservas
                       from locacoes
                       order by id`, async function (err, result) {
                 done();
@@ -1386,25 +1375,20 @@ sw.get('/listlocacao', function (req, res) {
                     res.status(400).send(`{${err}}`);
                 } else {
 
-                    if (err) {
-                        console.log(err);
-                        res.status(400).send(`{${err}}`);
-                    } else {
-                        
-                        for (let index = 0; index < result.rows.length; index++) {
-                            
-                            try {
-                                
-                                lr = await client.query(`select id, data_inicio, data_fim, valor, valor_entrega, valor_total, observacoes, cliente, funcionario, status_reserva, 0 as produtos
-                                                          from reservas r, locacoes_reservas lr where lr.id=r.id and lr.id_reserva`, [result.rows[i].id])
+                    for (let index = 0; index < array.length; index++) {
+                        try {
+                            lr = await client.query(`select r.id, r.data_inicio, r.data_fim, r.valor, r.valor_entrega, r.valor_total, r.observacoes, r.cliente, r.funcionario, r.status_reserva 
+                                                     from reservas r, locacoes_reservas lr
+                                                     where lr.id_locacao = r.id and lr = lr.id = $1`, [result.rows[i].id])
 
-                            } catch (err) {
-                                res.status(400).send(`{${err}}`);
-                            }
-                            
+                            result.rows[i].reservas = lr.rows
+
+
+                        } catch (error) {
+                            res.status(400).send(`{${err}}`);
                         }
+                        
                     }
-
                     done();
                     res.status(200).send(result.rows);
                 }
@@ -1415,24 +1399,39 @@ sw.get('/listlocacao', function (req, res) {
 
 });
 
-sw.get('/deletelocacao/:id', function (req, res, next) {
+sw.delete('/deletelocacao/:id', function (req, res, next) {
 
     postgres.connect(function (err, client, done) {
         if (err) {
             console.log(err);
             res.status(400).send(`{${err}}`);
         } else {
-            var q = {
-                text: `delete from locacoes where = $id`,
+            var q0 = {
+                text: `delete from locacoes_reservas where = $id`,
                 values: [req.params.id]
             }
+
+            var q1 = {
+                text: `delete from locacoes where = $id `,
+                values: [req.params.id]
+            }
+
             client.query(q, function (err, client) {
                 done(); // closing the connection;
                 if (err) {
                     console.log(err);
                     res.status(400).send(`{${err}}`);
                 } else {
-                    res.status(200).send({ 'id': req.params.id });//retorna o nickname deletado.
+
+                    client.query(q1, function(err, result) {
+                        done();
+                        if (err) {
+                            console.log(err);
+                            res.status(400).send(`{${err}}`);
+                        } else {
+                            res.status(200).send({'id': req.params.id});
+                        }
+                    })
                 }
 
             });
@@ -1448,21 +1447,38 @@ sw.post('/insertlocacao', function (req, res, next) {
         } else {
             var q = {
                 text: `insert into locacoes (data_retirada, data_previsao_entrega, data_entrega, data_previsao_pagamento, valor_total, valor_pago, observacoes, funcionario, tipos_pagamento) 
-                       values($1, $2, $3, $4, $5, $6, $7, $8, $9)
-                       returning(data_retirada, data_previsao_entrega, data_entrega, data_previsao_pagamento, valor_total, valor_pago, observacoes, funcionario, tipos_pagamento)`,
+                       values(now(), now(), now(), now(), $5, $6, $7, $8, $9)
+                       returning(to_char(data_retirada, \'dd/mm/yyyy\') as data_retirada , 
+                                 to_char(data_previsao_entrega, \'dd/mm/yyyy\') as data_previsao_entrega,
+                                 to_char(data_entrega, \'dd/mm/yyyy) as data_entrega, 
+                                 to_char(data_previsao_pagamento, \'dd/mm/yyyy\') as data_previsao_pagamento, 
+                                 valor_total, valor_pago, observacoes, funcionario, tipos_pagamento)`,
                 values: [req.body.data_retirada, req.body.data_previsao_entrega,
                 req.body.data_previsao_pagamento, req.body.valor_total,
                 req.body.valor_pago, req.body.funcionario, req.body.tipos_pagamento]
             }
             console.log(q);
 
-            client.query(q, function (err, result) {
-                done();
+            client.query(q, async function (err, result) {
+                
                 if (err) {
                     console.log('retornou 400 no insert');
                     console.log(err);
                     res.status(400).send(`{${err}}`);
                 } else {
+                    for (let index = 0; index < array.length; index++) {
+                        try {
+                            
+                            await client.query(`insert into locacoes_reservas(id_reserva, id_locacao) values($1, $2)`, 
+                            [req.body.reservas[index].id_reserva, req.body.id_locacao])
+
+                        } catch (err) {
+                            
+                            res.status(400).send(`{${err}}`);
+                        }
+                        
+                    }
+                    done();
                     console.log('retornou 201 no insertlocacao');
                     res.status(201).send(result.rows[0]);
                 }
@@ -1479,11 +1495,9 @@ sw.post('/updatelocacao', (req, res) => {
             res.status(400).send(`{${err}}`);
         } else {
             var q = {
-                text: `update locacoes set id=$1 data_retirada=$2, 
-                       data_previsao_entrega=$3, data_entrega=$4, 
-                       data_previsao_pagamento=$5, valor_total=$6, valor_pago=$7, observacoes=$8, funcionario=$9, tipos_pagamento=$10`,
+                text: `update locacoes set valor_total=$1, valor_pago=$3, observacoes=$4, funcionario=$5, tipos_pagamento=$6
+                       where id = $7`,
                 values: [
-                    req.body.id,
                     req.body.data_retirada,
                     req.body.data_previsao_entrega,
                     req.body.data_previsao_pagamento,
@@ -1494,12 +1508,33 @@ sw.post('/updatelocacao', (req, res) => {
             }
             console.log(q);
 
-            client.query(q, function (err, result) {
-                done();
+            client.query(q, async function (err, result) {
+               
                 if (err) {
                     console.log('retornou 400 no update ');
                     res.status(400).send(`{${err}}`);
                 } else {
+
+                    try {
+                        
+                        await client.query(`delete from locacoes_reservas lr where = $1`, [req.body.id])
+
+                        for (let index = 0; index < array.length; index++) {
+                            try {
+
+                                await client.query(`insert into locacoes_reservas (id_reserva, id_locacao) values($1, $2)`, 
+                                [req.body.reservas[index].id_reserva, req.body.id_locacao]);
+                                
+                            } catch (err) {
+                                res.status(400).send(`{${err}}`);
+                            }
+                            
+                        }
+                    } catch (err) {
+                        res.status(400).send(`{${err}}`);
+                    }
+
+                    done();
                     console.log('retornou 201 no updatelocacao');
                     res.status(200).send(req.body);
                 }
@@ -1508,6 +1543,7 @@ sw.post('/updatelocacao', (req, res) => {
         }
     });
 });
+
 
 
 sw.get('/listparcelamento', function (req, res) {

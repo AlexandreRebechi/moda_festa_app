@@ -31,8 +31,8 @@ CREATE TABLE funcionalidades (
 CREATE TABLE perfis_funcionalidades (
 	id_funcionalidade integer not null,
 	id_perfil integer not null,
-	foreign key (id_funcionalidade) references funcionalidades (id),
-	foreign key (id_perfil) references perfis (id),
+	--foreign key (id_funcionalidade) references funcionalidades (id),
+	--foreign key (id_perfil) references perfis (id),
 	primary key (id_funcionalidade, id_perfil)
 	
 	
