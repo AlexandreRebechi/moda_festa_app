@@ -29,14 +29,15 @@ CREATE TABLE funcionalidades (
 	
 );
 CREATE TABLE perfis_funcionalidades (
+	id serial not null primary key
 	id_funcionalidade integer not null,
 	id_perfil integer not null,
-	--foreign key (id_funcionalidade) references funcionalidades (id),
-	--foreign key (id_perfil) references perfis (id),
-	primary key (id_funcionalidade, id_perfil)
-	
+	foreign key (id_funcionalidade) references funcionalidades (id),
+	foreign key (id_perfil) references perfis (id),
+	--primary key(id_funcionalidade, id_perfil)
 	
 );
+select f.id, f.descricao from funcionalidades f, perfis_funcionalidades pf where pf.id_funcionalidade = f.id and pf.id_funcionalidade = 1
 
 
 
@@ -72,7 +73,8 @@ CREATE TABLE reservas (
 	observacoes varchar(300) not null,
 	cliente integer not null,
 	funcionario integer not null,
-	status_reserva statusReserva not null,
+	--status_reserva statusReserva not null,
+	status_reserva string not null,
 	foreign key (cliente) references clientes (id_pessoa),
 	foreign key (funcionario) references funcionarios (id_pessoa)
 
@@ -95,11 +97,12 @@ CREATE TABLE produtos (
 	
 );
 CREATE TABLE reservas_produtos(
+	id integer not null primary key
 	id_reserva integer not null ,
 	id_produto integer not null ,
 	foreign key(id_reserva) references reservas(id),
 	foreign key(id_produto) references produtos (id),
-	primary key(id_reserva, id_produto)
+	--primary key(id_reserva, id_produto)
 
 );
 
@@ -130,7 +133,8 @@ CREATE TABLE locacoes (
 	valor_pago numeric(7,2) not null,
 	observacoes varchar(300) not null,
 	funcionario integer not null,
-	tipos_pagamento tiposPagamento not null,
+	--tipos_pagamento tiposPagamento not null,
+	tipos_pagamento string not null,
 	foreign key (funcionario) references pessoas(id)
 	
 	
@@ -141,11 +145,12 @@ CREATE TABLE locacoes (
 
 
 CREATE TABLE locacoes_reservas(
+	id integer not null primary key,
 	id_locacao integer not null,
 	id_reserva integer not null,
 	foreign key (id_locacao) references locacoes(id),
-	foreign key (id_reserva) references reservas(id),
-	primary key (id_locacao, id_reserva)
+	foreign key (id_reserva) references reservas(id)
+	--primary key(id_locacao, id_reserva)
 
 );
 
