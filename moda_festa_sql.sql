@@ -20,8 +20,10 @@ CREATE TABLE pessoas(
 CREATE TABLE perfis (
 	id serial not null primary key ,
 	descricao text not null
+
 );
 
+select p.id, p.descricao, 0 as funcionalidades from perfis p order by id asc;
 CREATE TABLE funcionalidades (
 	id serial not null primary key,
 	descricao text not null
@@ -29,12 +31,11 @@ CREATE TABLE funcionalidades (
 	
 );
 CREATE TABLE perfis_funcionalidades (
-	id serial not null primary key
 	id_funcionalidade integer not null,
 	id_perfil integer not null,
 	foreign key (id_funcionalidade) references funcionalidades (id),
 	foreign key (id_perfil) references perfis (id),
-	--primary key(id_funcionalidade, id_perfil)
+	primary key(id_funcionalidade, id_perfil)
 	
 );
 select f.id, f.descricao from funcionalidades f, perfis_funcionalidades pf where pf.id_funcionalidade = f.id and pf.id_funcionalidade = 1
@@ -97,12 +98,11 @@ CREATE TABLE produtos (
 	
 );
 CREATE TABLE reservas_produtos(
-	id integer not null primary key
 	id_reserva integer not null ,
 	id_produto integer not null ,
 	foreign key(id_reserva) references reservas(id),
 	foreign key(id_produto) references produtos (id),
-	--primary key(id_reserva, id_produto)
+	primary key(id_reserva, id_produto)
 
 );
 
@@ -145,12 +145,11 @@ CREATE TABLE locacoes (
 
 
 CREATE TABLE locacoes_reservas(
-	id integer not null primary key,
 	id_locacao integer not null,
 	id_reserva integer not null,
 	foreign key (id_locacao) references locacoes(id),
 	foreign key (id_reserva) references reservas(id)
-	--primary key(id_locacao, id_reserva)
+	primary key(id_locacao, id_reserva)
 
 );
 
@@ -181,8 +180,3 @@ CREATE TABLE acompanhamento (
 	foreign key (id_locacao) references locacoes(id),
 	foreign key (id_sitacao) references sitacao(id)
 );
-
-
-
-
-
