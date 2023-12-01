@@ -20,10 +20,8 @@ CREATE TABLE pessoas(
 CREATE TABLE perfis (
 	id serial not null primary key ,
 	descricao text not null
-
 );
 
-select p.id, p.descricao, 0 as funcionalidades from perfis p order by id asc;
 CREATE TABLE funcionalidades (
 	id serial not null primary key,
 	descricao text not null
@@ -31,11 +29,12 @@ CREATE TABLE funcionalidades (
 	
 );
 CREATE TABLE perfis_funcionalidades (
+	id serial not null primary key
 	id_funcionalidade integer not null,
 	id_perfil integer not null,
 	foreign key (id_funcionalidade) references funcionalidades (id),
 	foreign key (id_perfil) references perfis (id),
-	primary key(id_funcionalidade, id_perfil)
+	--primary key(id_funcionalidade, id_perfil)
 	
 );
 select f.id, f.descricao from funcionalidades f, perfis_funcionalidades pf where pf.id_funcionalidade = f.id and pf.id_funcionalidade = 1
@@ -74,12 +73,20 @@ CREATE TABLE reservas (
 	observacoes varchar(300) not null,
 	cliente integer not null,
 	funcionario integer not null,
-	--status_reserva statusReserva not null,
-	status_reserva string not null,
+	status_reserva statusReserva not null,
+	--status_reserva string not null,
 	foreign key (cliente) references clientes (id_pessoa),
 	foreign key (funcionario) references funcionarios (id_pessoa)
 
 );
+
+select r.id, r.data_inicio, r.data_fim, r.valor, r.valor_entrega, r.valor_total, r.observacoes, r.cliente, r.funcionario, r.status_reserva, 0 as produtos
+from reservas r
+order by id;
+
+select p.id, p.descricao,  p.observacoes, p.valor_custo, p.valor_aluguel, p.valor_venda, p.tipo_produto 
+from produtos p, reservas_produtos rp 
+where rp.id_produto = p.id and rp.id_produto = 1
 
 CREATE TABLE tiposProduto (
 	id serial not null primary key,
@@ -133,8 +140,7 @@ CREATE TABLE locacoes (
 	valor_pago numeric(7,2) not null,
 	observacoes varchar(300) not null,
 	funcionario integer not null,
-	--tipos_pagamento tiposPagamento not null,
-	tipos_pagamento string not null,
+	tipos_pagamento tiposPagamento not null,
 	foreign key (funcionario) references pessoas(id)
 	
 	
@@ -145,11 +151,12 @@ CREATE TABLE locacoes (
 
 
 CREATE TABLE locacoes_reservas(
+	id integer not null primary key,
 	id_locacao integer not null,
 	id_reserva integer not null,
 	foreign key (id_locacao) references locacoes(id),
 	foreign key (id_reserva) references reservas(id)
-	primary key(id_locacao, id_reserva)
+	--primary key(id_locacao, id_reserva)
 
 );
 
@@ -166,7 +173,7 @@ CREATE TABLE parcelamentos (
 	
 );
 CREATE TABLE sitacao (
-	id integer not null primary key,
+	id serial not null primary key,
 	descricao varchar(300) not null
 );
 
@@ -180,3 +187,8 @@ CREATE TABLE acompanhamento (
 	foreign key (id_locacao) references locacoes(id),
 	foreign key (id_sitacao) references sitacao(id)
 );
+
+
+
+
+
