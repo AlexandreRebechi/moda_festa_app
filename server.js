@@ -17,7 +17,7 @@ const config = {
     user: 'postgres',
     database: 'moda_festa_BD',
     password: 'postgres',
-    port: 5435 //5432 5435
+    port: 5432 //5432 5435
 };
 
 //definia conexao com o banco de dados.
@@ -35,14 +35,14 @@ sw.get('/listcliente', function (req, res) {
             console.log("Não conseguiu acessar o DB :" + err);
             res.status(400).send(`{${err}}`);
         } else {
-            client.query('SELECT p.nome, p.telefone, p.cep, ' +
+            client.query('SELECT p.id, p.nome, p.telefone, p.cep, ' +
                 'p.logradouro, p.bairro, p.complemento, p.observacoes, ' +
                 'p.data_cadastro, ' +
-                'to_char(p.data_ultimo_login, \'dd/mm/yyyy\') as data_ultimo_login, ' +
+                'to_char(p.data_cadastro, \'dd/mm/yyyy\') as data_cadastro, ' +
                 'p.username, p.password, ' +
                 ' to_char(p.data_ultimo_login, \'dd/mm/yyyy\') as data_ultimo_login, ' +
                 'c.cpf, c.rg, c.cnpj, c.ie ' +
-                'FROM pessoas p left join clientes c on (p.id=c.id_pessoa) ' +
+                'FROM pessoas p inner join clientes c on (p.id=c.id_pessoa) ' +
                 'order by p.id asc;', function (err, result) {
                     done();
                     if (err) {
@@ -283,12 +283,15 @@ sw.get('/listfuncionario', function (req, res) {
             console.log("Não conseguiu acessar o DB :" + err);
             res.status(400).send(`{${err}}`);
         } else {
-            client.query('SELECT p.nome, p.email, p.telefone, p.cep, ' +
-                ' p.logradouro, p.bairro, p.numero, p.complemento,' +
-                'p.observacoes, p.data_cadastro, username, ' +
-                'p.password, p.data_ultimo_login, ' +
-                ' numero_ctps, data_contratacao, data_demissao, perfil' +
-                ' FROM pessoas p left join funcionarios f  on (p.nome=f.numero_ctps) order by p.nome asc;', function (err, result) {
+            client.query('SELECT p.id, p.nome, p.telefone, p.cep, '+
+                'p.logradouro, p.bairro, p.complemento, p.observacoes, '+
+                'p.data_cadastro, '+
+                'to_char(p.data_cadastro, \'dd/mm/yyyy\') as data_cadastro, '+
+                'p.username, p.password, '+
+                'to_char(p.data_ultimo_login, \'dd/mm/yyyy\') as data_ultimo_login, '+
+                'f.numero_ctps,to_char(f.data_contratacao, \'dd/mm/yyyy\') as data_contratacao, to_char(f.data_demissao, \'dd/mm/yyyy\') as data_demissao, f.perfil ' +
+                'FROM pessoas p inner join funcionarios f on (p.id=f.id_pessoa) '+ 
+                'order by p.id asc;', function (err, result) {
                     done(); // closing the connection;
                     if (err) {
                         console.log(err);
@@ -763,7 +766,7 @@ sw.get('/listfuncionalidade', function (req, res, next) {
             console.log("Nao conseguiu acessar o  BD " + err);
             res.status(400).send(`{${err}}`);
         } else {
-            client.query('select descricao from funcionalidades order by id', function (err, result) {
+            client.query('select id, descricao from funcionalidades order by id asc;', function (err, result) {
                 done();
                 if (err) {
                     console.log(err);
@@ -876,7 +879,10 @@ sw.get('/listreserva', function (req, res) {
             console.log("Não conseguiu acessar o BD :" + err);
             res.status(400).send(`{${err}}`);
         } else {
-            client.query('select r.id, r.data_inicio, r.data_fim, r.valor, r.valor_entrega, r.valor_total, r.observacoes, r.cliente, r.funcionario, r.status_reserva, 0 as produtos ' +
+            client.query('select r.id, '+
+            'to_char(r.data_inicio, \'dd/mm/yyyy\') as data_inicio, '+
+           'to_char(r.data_fim, \'dd/mm/yyyy\') as data_fim, '+
+            'r.valor, r.valor_entrega, r.valor_total, r.observacoes, r.cliente, r.funcionario, r.status_reserva, 0 as produtos ' +
                 'from reservas r ' +
                 'order by r.id asc;', async function (err, result) {
 
@@ -961,7 +967,7 @@ sw.post('/insertreserva', function (req, res, next) {
 
             var q = {
                 text: 'insert into reservas (data_inicio, data_fim, valor, valor_entrega, valor_total, observacoes, cliente, funcionario, status_reserva) ' +
-                    'values(now(), now(),$1, $2, $3, $4, $5, $6, $7) ' +
+                    'values(now(),now(),$1, $2, $3, $4, $5, $6, $7) ' +
                     'returning id,  to_char(data_inicio, \'dd/mm/yyyy\') as data_inicio, to_char(data_fim, \'dd/mm/yyyy\'), valor, valor_entrega, valor_total, observacoes, cliente, funcionario, status_reserva',
                 values: [req.body.valor,
                 req.body.valor_entrega,
@@ -1003,6 +1009,9 @@ sw.post('/insertreserva', function (req, res, next) {
                         "valor": result.rows[0].valor,
                         "valor_entrega": result.rows[0].valor_entrega,
                         "valor_total": result.rows[0].valor_total,
+                        "cliente": result.rows[0].cliente,
+                        "funcionario": result.rows[0].funcionario,
+                        "status_reserva": result.rows[0].status_reserva,
                         "produtos": req.body.produtos
                     });
                 }
@@ -1044,8 +1053,8 @@ sw.put('/updatereserva', function (req, res, next) {
                 } else {
 
                     try {
-                        await client.query('delete from reservas_produtos rp where rp.id_reserva = $1'),
-                            [req.body.id]
+                        await client.query('delete from reservas_produtos rp where rp.id_reserva = $1',
+                            [req.body.id])
 
                         for (let index = 0; index < array.length; index++) {
                             try {
@@ -1072,6 +1081,9 @@ sw.put('/updatereserva', function (req, res, next) {
                         "valor": result.rows[0].valor,
                         "valor_entrega": result.rows[0].valor_entrega,
                         "valor_total": result.rows[0].valor_total,
+                        "cliente": result.rows[0].cliente,
+                        "funcionario": result.rows[0].funcionario,
+                        "status_reserva": result.rows[0].status_reserva,
                         "produtos": req.body.produtos
                     });
                 }
@@ -1264,7 +1276,7 @@ sw.post('/insertfoto', function (req, res, next) {
             var q = {
                 text: 'insert into fotos (descricao, b64, produto_id) ' +
                     'values ($1, $2, $3) ' +
-                    'returning(id, descricao, b64, produto_id)',
+                    'returning id, descricao, b64, produto_id',
                 values: [
                     req.body.descricao,
                     req.body.b64,
@@ -1277,7 +1289,7 @@ sw.post('/insertfoto', function (req, res, next) {
             client.query(q, function (err, result) {
                 done();
                 if (err) {
-                    console.log('retornou 400 no insert');
+                    console.log('retornou 400 no insertfoto');
                     console.log(err);
                     res.status(400).send(`{${err}}`);
                 } else {
@@ -1285,8 +1297,8 @@ sw.post('/insertfoto', function (req, res, next) {
                     res.status(201).send({
                         "id": result.rows[0].id,
                         "descricao": result.rows[0].descricao,
-                        "b24": result.rows[0].b24,
-                        "produto_id": result.rows[0].id_pessoa
+                        "b64": result.rows[0].b64,
+                        "produto_id": result.rows[0].produto_id
                     });
                 }
 
@@ -1445,10 +1457,14 @@ sw.get('/listlocacao', function (req, res) {
             res.status(400).send(`{${err}}`);
         } else {
 
-            client.query('select id, data_retirada, data_previsao_entrega, data_entrega, ' +
-                'data_previsao_pagamento, valor_total, valor_pago, observacoes, funcionario, tipos_pagamento, 0 as reservas ' +
-                'from locacoes ' +
-                'order by id;', async function (err, result) {
+            client.query('select id, '+
+            'to_char(data_retirada, \'dd/mm/yyyy\') as data_retirada, '+
+            'to_char(data_previsao_entrega, \'dd/mm/yyyy\') as data_previsao_entrega, '+
+            'to_char(data_entrega, \'dd/mm/yyyy\') as data_entrega, ' +
+            'to_char(data_previsao_pagamento, \'dd/mm/yyyy\') as data_previsao_pagamento, '+
+            'valor_total, valor_pago, observacoes, funcionario, tipos_pagamento, 0 as reservas ' +
+            'from locacoes ' +
+            'order by id;', async function (err, result) {
 
                     if (err) {
                         console.log(err);
@@ -1457,7 +1473,10 @@ sw.get('/listlocacao', function (req, res) {
 
                         for (let index = 0; index < result.rows.length; index++) {
                             try {
-                                lr = await client.query('select r.id, r.data_inicio, r.data_fim, r.valor, r.valor_entrega, r.valor_total, r.observacoes, r.cliente, r.funcionario, r.status_reserva ' +
+                                lr = await client.query('select r.id, '+
+                               'to_char(r.data_inicio, \'dd/mm/yyyy\') as data_inicio, '+
+                                'to_char(r.data_fim, \'dd/mm/yyyy\') as data_fim, ' +
+                                'r.valor, r.valor_entrega, r.valor_total, r.observacoes, r.cliente, r.funcionario, r.status_reserva ' +
                                     'from reservas r, locacoes_reservas lr ' +
                                     'where lr.id_reserva = r.id and lr.id_reserva = $1 ', [result.rows[index].id])
 
@@ -1645,7 +1664,10 @@ sw.get('/listparcelamento', function (req, res) {
             res.status(400).send(`{${err}}`);
         } else {
 
-            client.query('select id, numero_parcela, data_previsao_pagamento, data_pagamento, valor_total, valor_pago, id_locacao ' +
+            client.query('select id, numero_parcela, '+
+           'to_char(data_previsao_pagamento, \'dd/mm/yyyy\') as data_previsao_pagamento, '+
+           'to_char(data_pagamento, \'dd/mm/yyyy\') as data_pagamento, '+
+            'valor_total, valor_pago, id_locacao ' +
                 'from parcelamentos ' +
                 'order by id', function (err, result) {
                     done();
@@ -1697,7 +1719,10 @@ sw.post('/insertparcelamento', function (req, res, next) {
             var q = {
                 text: 'insert into parcelamentos (numero_parcela, data_previsao_pagamento, data_pagamento, valor_total, valor_pago, id_locacao) ' +
                     'values($1, $2, $3, $4, $5, $6) ' +
-                    'returning(numero_parcela, data_previsao_pagamento, data_pagamento, valor_total, valor_pago, id_locacao) ',
+                    'returning numero_parcela, '+
+                        'to_char(data_previsao_pagamento, \'dd/mm/yyyy\') , '+
+                        'to_char(data_pagamento, \'dd/mm/yyyy\') , '+
+                        'valor_total, valor_pago, id_locacao',
                 values: [
                     req.body.numero_parcela, 
                     req.body.data_previsao_pagamento, 
@@ -1731,7 +1756,11 @@ sw.put('/updateparcelamento', (req, res) => {
             res.status(400).send(`{${err}}`);
         } else {
             var q = {
-                text: 'update parcelamentos set numero_parcela=$2, data_previsao_pagamento=$3, data_pagamento=$4, valor_total=$5, valor_pago=$6, id_locacao=$7 where id=$1',
+                text: 'update parcelamentos set numero_parcela=$2, data_previsao_pagamento=$3, data_pagamento=$4, valor_total=$5, valor_pago=$6, id_locacao=$7 where id=$1 '+
+                'returning numero_parcela, '+
+                        'to_char(data_previsao_pagamento, \'dd/mm/yyyy\') ,'+
+                        'to_char(data_pagamento, \'dd/mm/yyyy\') ,'+
+                        'valor_total, valor_pago, id_locacao',
                 values: [
                     req.body.id,
                     req.body.numero_parcela,
@@ -1818,7 +1847,7 @@ sw.post('/insertsitacao', function (req, res, next) {
             var q = {
                 text: 'insert into sitacao (descricao) ' +
                     'values($1) ' +
-                    ' returning(descricao)',
+                    ' returning descricao',
                 values: [req.body.descricao]
             }
             console.log(q);
@@ -1877,7 +1906,9 @@ sw.get('/listacompanhamento', function (req, res) {
             res.status(400).send(`{${err}}`);
         } else {
 
-            client.query('select id, sequencia_passo, data, observacoes, id_sitacao, id_locacao ' +
+            client.query('select id, sequencia_passo, '+
+            'to_char(data, \'dd/mm/yyyy\') as data, '+
+            'observacoes, id_sitacao, id_locacao ' +
                 'from acompanhamento ' +
                 'order by id; ', function (err, result) {
                     done();
@@ -1929,7 +1960,9 @@ sw.post('/insertacompanhamento', function (req, res, next) {
             var q = {
                 text: 'insert into acompanhamento (sequencia_passo, data, observacoes, id_sitacao, id_locacao) ' +
                     'values($1, $2, $3, $4, $5) ' +
-                    'returning(sequencia_passo, data, observacoes, id_sitacao, id_locacao)',
+                    'returning sequencia_passo, '+
+                        'to_char(data, \'dd/mm/yyyy\'), '+
+                        'observacoes, id_sitacao, id_locacao',
                 values: [
                     req.body.sequencia_passo,
                     req.body.data,
@@ -1962,7 +1995,10 @@ sw.put('/updateacompanhamento', (req, res) => {
             res.status(400).send(`{${err}}`);
         } else {
             var q = {
-                text: 'update acompanhamento set  sequencia_passo=$2, data=$3, observacoes=$4, id_sitacao=$5, id_locacao=$6 where id = $1',
+                text: 'update acompanhamento set  sequencia_passo=$2, data=$3, observacoes=$4, id_sitacao=$5, id_locacao=$6 where id = $1 '+
+                'returning sequencia_passo, '+
+                        'to_char(data, \'dd/mm/yyyy\') , '+
+                        'observacoes, id_sitacao, id_locacao',
                 values: [
                     req.body.id,
                     req.body.sequencia_passo,
