@@ -1,5 +1,5 @@
 
-CREATE TABLE pessoas(
+CREATE TABLE IF NOT EXISTS pessoas(
 	id serial primary key  not null,
 	nome varchar(100) not null,
 	email varchar(100) not null,
@@ -15,7 +15,14 @@ CREATE TABLE pessoas(
 	password varchar(6) not null,
 	data_ultimo_login date not null		
 );
-
+SELECT p.nome,p.email, p.telefone, p.cep,
+                p.logradouro, p.bairro, p.complemento, p.observacoes, 
+                to_char(p.data_cadastro, 'dd/mm/yyyy') as data_cadastro, 
+                p.username, p.password, 
+                 to_char(p.data_ultimo_login, 'dd/mm/yyyy') as data_ultimo_login, 
+                c.cpf, c.rg, c.cnpj, c.ie 
+                FROM pessoas p left join clientes c on (p.id=c.id_pessoa)
+                order by p.id asc;
 
 CREATE TABLE perfis (
 	id serial not null primary key ,
@@ -33,29 +40,29 @@ CREATE TABLE perfis_funcionalidades (
 	id_perfil integer not null,
 	foreign key (id_funcionalidade) references funcionalidades (id),
 	foreign key (id_perfil) references perfis (id),
-	primary key (id_funcionalidade, id_perfil)
-	
+	primary key(id_funcionalidade, id_perfil)
 	
 );
+select f.id, f.descricao from funcionalidades f, perfis_funcionalidades pf where pf.id_funcionalidade = f.id and pf.id_funcionalidade = 1
 
 
 
-CREATE TABLE clientes(
+CREATE TABLE IF NOT EXISTS clientes(
 	cpf varchar(11) not null,
 	rg varchar(9) not null,
 	cnpj varchar(14) not null,
 	ie varchar(14) not null,
-	id_pessoa integer primary key not null,
+	id_pessoa integer not null,
 	foreign key (id_pessoa) references pessoas (id)
 );
 
 
-CREATE TABLE funcionarios (
+CREATE TABLE IF NOT EXISTS funcionarios (
 	numero_ctps varchar(50) not null,
 	data_contratacao date not null,
 	data_demissao date not null,
 	perfil integer not null,
-	id_pessoa integer primary key not null,
+	id_pessoa integer not null,
 	foreign key (id_pessoa) references pessoas (id),
 	foreign key (perfil) references perfis (id)
 ); 
@@ -73,10 +80,19 @@ CREATE TABLE reservas (
 	cliente integer not null,
 	funcionario integer not null,
 	status_reserva statusReserva not null,
+	--status_reserva string not null,
 	foreign key (cliente) references clientes (id_pessoa),
 	foreign key (funcionario) references funcionarios (id_pessoa)
 
 );
+
+select r.id, r.data_inicio, r.data_fim, r.valor, r.valor_entrega, r.valor_total, r.observacoes, r.cliente, r.funcionario, r.status_reserva, 0 as produtos
+from reservas r
+order by id;
+
+select p.id, p.descricao,  p.observacoes, p.valor_custo, p.valor_aluguel, p.valor_venda, p.tipo_produto 
+from produtos p, reservas_produtos rp 
+where rp.id_produto = p.id and rp.id_produto = 1
 
 CREATE TABLE tiposProduto (
 	id serial not null primary key,
@@ -141,11 +157,12 @@ CREATE TABLE locacoes (
 
 
 CREATE TABLE locacoes_reservas(
+	id integer not null primary key,
 	id_locacao integer not null,
 	id_reserva integer not null,
 	foreign key (id_locacao) references locacoes(id),
-	foreign key (id_reserva) references reservas(id),
-	primary key (id_locacao, id_reserva)
+	foreign key (id_reserva) references reservas(id)
+	--primary key(id_locacao, id_reserva)
 
 );
 
@@ -162,7 +179,7 @@ CREATE TABLE parcelamentos (
 	
 );
 CREATE TABLE sitacao (
-	id integer not null primary key,
+	id serial not null primary key,
 	descricao varchar(300) not null
 );
 
@@ -177,7 +194,14 @@ CREATE TABLE acompanhamento (
 	foreign key (id_sitacao) references sitacao(id)
 );
 
+CREATE TABLE usuario(
+	nickname varchar(100) not null,
+	senha varchar(100) not null,
+	data_cadastro date not null,
+	situacao varchar(1) not null,
+	primary key(nickname, senha)
 
+)
 
-
+insert into usuario(nickname, senha, data_cadastro, situacao) values('alexandre', '1234', '2024/03/13', 'A')
 
