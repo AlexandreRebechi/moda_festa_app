@@ -161,12 +161,12 @@ sw.post('/insertcliente', function (req, res, next) {
                 ]
             }
             var q2 = {
-                text: `insert into clientes (cpf, rg, cnpj, ie, id_pessoa) values ($1, $2, $3, $4, $5) returning cpf, rg, cnpj, ie;`,
+                text: `insert into clientes (cpf, rg, cnpj, ie, id_pessoa) values ($1, $2, $3, $4, $5) returning codigo, cpf, rg, cnpj, ie;`,
                 values: [
-                    req.body.cpf,
-                    req.body.rg,
-                    req.body.cnpj,
-                    req.body.ie,
+                    req.body.cliente.cpf,
+                    req.body.cliente.rg,
+                    req.body.cliente.cnpj,
+                    req.body.cliente.ie,
                     req.body.id
                     
                 ]
