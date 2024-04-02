@@ -63,6 +63,63 @@ sw.post('/login',function(req, res, next) {
     })
 })
 
+sw.get('/cliente/:id', function(req, res) {
+    
+    //estabelece uma conexao com o bd.
+    postgres.connect(function(err, client, done) {
+        
+        if (err) {
+            console.log("Não conseguiu acessar o BD :"+ err);
+            res.status(400).send('{'+err+'}');
+        } else {
+            var q ={
+                text: 'SELECT p.id, p.nome, p.telefone, p.cep, ' +
+                'p.logradouro, p.bairro, p.complemento, p.observacoes, ' +
+                'p.data_cadastro, ' +
+                'to_char(p.data_cadastro, \'dd/mm/yyyy\') as data_cadastro, ' +
+                'p.username, p.password, ' +
+                'to_char(p.data_ultimo_login, \'dd/mm/yyyy\') as data_ultimo_login, ' +
+                'c.cpf, c.rg, c.cnpj, c.ie ' +
+                'FROM pessoas p inner join clientes c on (p.id=c.id_pessoa) ' +
+                'where id = $1 order by p.id asc;',
+                values: [req.params.id]
+            }
+            client.query(q, async function(err, result) {
+
+                if (err) {
+                    console.log(err);
+                    res.status(500).send('{'+err+'}');
+                } else {
+                    
+                    done();
+                    res.status(200).send({
+                        "id": result.rows[0].id,
+                        "nome": result.rows[0].nome,
+                        "email": result.rows[0].email,
+                        "telefone": result.rows[0].telefone,
+                        "cep": result.rows[0].cep,
+                        "logradouro": result.rows[0].logradouro,
+                        "bairro": result.rows[0].bairro,
+                        "numero": result.rows[0].numero,
+                        "complemento": result.rows[0].complemento,
+                        "observacoes": result.rows[0].observacoes,
+                        "username": result.rows[0].username,
+                        "password": result.rows[0].password,
+                        "cliente": {
+                            "cpf": result.rows[0].cpf,
+                            "rg": result.rows[0].rg,
+                            "cnpj": result.rows[0].cnpj,
+                            "ie": result.rows[0].ie
+                    }
+                })
+                   
+                      
+                }
+                
+            })
+        }
+    })
+})
 
 sw.get('/listcliente', function (req, res) {
     postgres.connect(function (err, client, done) {
@@ -92,7 +149,7 @@ sw.get('/listcliente', function (req, res) {
     });
 });
 
-sw.delete('/deletecliente/:id', (req, res) => {
+sw.get('/deletecliente/:id', (req, res) => {
     postgres.connect(function (err, client, done) {
         if (err) {
             console.log("Não consequiu acessar o banco de dados!")
@@ -160,34 +217,36 @@ sw.post('/insertcliente', function (req, res, next) {
                     req.body.password
                 ]
             }
-            var q2 = {
-                text: `insert into clientes (cpf, rg, cnpj, ie, id_pessoa) values ($1, $2, $3, $4, $5) returning codigo, cpf, rg, cnpj, ie;`,
-                values: [
-                    req.body.cliente.cpf,
-                    req.body.cliente.rg,
-                    req.body.cliente.cnpj,
-                    req.body.cliente.ie,
-                    req.body.id
-                    
-                ]
-            }
+        
 
             console.log(q1);
 
             client.query(q1, function (err, result1) {
+                var q2 = {
+                    text: `insert into clientes (cpf, rg, cnpj, ie, id_pessoa) values ($1, $2, $3, $4, $5) returning cpf, rg, cnpj, ie;`,
+                    values: [
+                        req.body.cliente.cpf,
+                        req.body.cliente.rg,
+                        req.body.cliente.cnpj,
+                        req.body.cliente.ie,
+                        result1.rows[0].id
+                        
+                    ]
+                }
                 if (err) {
                     console.log('retornou 400 no insert q1');
                     res.status(400).send(`{${err}}`);
+                    
                 } else {
                     client.query(q2, function (err, result2) {
                         if (err) {
-                            console.log('retornou 400 no insert q2');
+                            console.log('retornou 400 no insert q2:'+err.message);
                             res.status(400).send(`{${err}}`);
                         } else {
                             done(); // closing the connection;
                             console.log(`retornou 201 no insertcliente`)
                             res.status(201).send({
-                                "id": result1.rows[0].codigo,
+                                "id": result1.rows[0].id,
                                 "nome": result1.rows[0].nome,
                                 "email": result1.rows[0].email,
                                 "telefone": result1.rows[0].telefone,
@@ -216,7 +275,7 @@ sw.post('/insertcliente', function (req, res, next) {
     });
 
 });
-sw.put('/updatecliente', function (req, res, next) {
+sw.post('/updatecliente', function (req, res, next) {
 
     postgres.connect(function (err, client, done) {
         if (err) {
@@ -249,32 +308,35 @@ sw.put('/updatecliente', function (req, res, next) {
 
                 ]
             }
-            var q2 = {
-                text: `update clientes set cpf=$1, rg=$2, cnpj=$3, ie=$4 where id_pessoa=$5
-                       returning cpf, rg, cnpj, ie, id_pessoa `,
-                values: [
-                    req.body.cpf,
-                    req.body.rg,
-                    req.body.cnpj,
-                    req.body.ie,
-                    req.body.id_pessoa
-                ]
-
-            }
+          
 
             console.log(q1);
-            console.log(q2);
+           
 
             client.query(q1, function (err, result1) {
+                var q2 = {
+                    text: `update clientes set cpf=$1, rg=$2, cnpj=$3, ie=$4 where id_pessoa=$5
+                           returning cpf, rg, cnpj, ie, id_pessoa `,
+                    values: [
+                        req.body.cpf,
+                        req.body.rg,
+                        req.body.cnpj,
+                        req.body.ie,
+                        req.body.id
+                    ]
+    
+                }
+                console.log(q2);
                 if (err) {
                     console.log(err);
-                    res.status(400).send(`{${err}}`);
+                    res.status(400).send(`mensagem erro q1: {${err.message}}`);
+                  
                 } else {
                     client.query(q2, function (err, result2) {
                         if (err) {
                             console.log('retornou 400 no update');
                             console.log(err)
-                            res.status(400).send(`{${err}}`)
+                            res.status(400).send(`mensagem erro q2: {${err.message}}`)
                         } else {
                             done(); // closing the connection;
 
@@ -299,7 +361,6 @@ sw.put('/updatecliente', function (req, res, next) {
                                     "rg": result2.rows[0].rg,
                                     "cnpj": result2.rows[0].cnpj,
                                     "ie": result2.rows[0].ie,
-                                    "id_pessoa": result2.rows[0].id_pessoa
 
                                 }
                             });
@@ -603,7 +664,43 @@ sw.get('/perfil/:id', function (req, res) {
     });
 
 });
+sw.get('/perfil/:id', function(req, res) {
+    
+    //estabelece uma conexao com o bd.
+    postgres.connect(function(err, client, done) {
+        
+        if (err) {
+            console.log("Não conseguiu acessar o BD :"+ err);
+            res.status(400).send('{'+err+'}');
+        } else {
+            var q ={
+                text: 'SELECT p.id, p.descricao' +
+                'FROM perfis p'+
+                'where id = $1 order by p.id asc;',
+                values: [req.params.id]
+            }
+            client.query(q, async function(err, result) {
 
+                if (err) {
+                    console.log(err);
+                    res.status(500).send('{'+err+'}');
+                } else {
+                    
+                    done();
+                    res.status(200).send({
+                        "id": result.rows[0].id,
+                        "Descricao": result.rows[0].descricao,
+                        
+                       
+                })
+                   
+                      
+                }
+                
+            })
+        }
+    })
+})
 sw.get('/listperfil', function (req, res) {
 
     postgres.connect(function (err, client, done) {
@@ -794,6 +891,43 @@ sw.delete('/deleteperfil/:id', function (req, res) {
 });
 
 
+sw.get('/funcionalidade/:id', function(req, res) {
+    
+    //estabelece uma conexao com o bd.
+    postgres.connect(function(err, client, done) {
+        
+        if (err) {
+            console.log("Não conseguiu acessar o BD :"+ err);
+            res.status(400).send('{'+err+'}');
+        } else {
+            var q ={
+                text: 'SELECT f.id, f.descricao' +
+                'FROM funcionalidades f'+
+                'where id = $1 order by f.id asc;',
+                values: [req.params.id]
+            }
+            client.query(q, async function(err, result) {
+
+                if (err) {
+                    console.log(err);
+                    res.status(500).send('{'+err+'}');
+                } else {
+                    
+                    done();
+                    res.status(200).send({
+                        "id": result.rows[0].id,
+                        "Descricao": result.rows[0].descricao,
+                        
+                       
+                })
+                   
+                      
+                }
+                
+            })
+        }
+    })
+})
 sw.get('/listfuncionalidade', function (req, res, next) {
     postgres.connect(function (err, client, done) {
 
@@ -848,7 +982,7 @@ sw.post('/insertfuncionalidade', function (req, res, next) {
     });
 });
 
-sw.put('/updatefuncionalidade', (req, res) => {
+sw.post('/updatefuncionalidade', (req, res) => {
 
     postgres.connect(function (err, client, done) {
         if (err) {
@@ -877,7 +1011,7 @@ sw.put('/updatefuncionalidade', (req, res) => {
     });
 });
 
-sw.delete('/deletefuncionalidade/:id', function (req, res, next) {
+sw.get('/deletefuncionalidade/:id', function (req, res, next) {
 
     postgres.connect(function (err, client, done) {
 
@@ -902,6 +1036,55 @@ sw.delete('/deletefuncionalidade/:id', function (req, res, next) {
                 }
             });
 
+        }
+    });
+});
+
+sw.get('/reserva/:id', function (req, res) {
+    postgres.connect(function (err, client, done) {
+
+        if (err) {
+
+            console.log("Não conseguiu acessar o BD :" + err);
+            res.status(400).send(`{${err}}`);
+        } else {
+            var q = {
+                text: 'select r.id, '+
+                'to_char(r.data_inicio, \'dd/mm/yyyy\') as data_inicio, '+
+               'to_char(r.data_fim, \'dd/mm/yyyy\') as data_fim, '+
+                'r.valor, r.valor_entrega, r.valor_total, r.observacoes, r.cliente, r.funcionario, r.status_reserva, 0 as produtos ' +
+                'from reservas r ' +
+                'where id = $1 '+
+                'order by r.id asc;',
+                values: [req.params.id]
+            }
+            client.query(q, async function(err, result) {
+
+                if (err) {
+                    console.log(err);
+                    res.status(500).send('{'+err+'}');
+                } else {
+                    
+                    done();
+                    res.status(200).send({
+                        "id": result.rows[0].id,
+                        "data_inicio": result.rows[0].data_inicio,
+                        "data_fim": result.rows[0].data_fim,
+                        "valor": result.rows[0].valor,
+                        "valor_entrega": result.rows[0].valor_entrega,
+                        "valor_total": result.rows[0].valor_total,
+                        "cliente": result.rows[0].cliente,
+                        "funcionario": result.rows[0].funcionario,
+                        "status_reserva": result.rows[0].status_reserva,
+                        "produtos": req.body.produtos
+                        
+                       
+                })
+                   
+                      
+                }
+                
+            })
         }
     });
 });
@@ -1128,6 +1311,38 @@ sw.put('/updatereserva', function (req, res, next) {
     });
 });
 
+sw.get('/produto/:id', function(req, res) {
+    postgres.connect(function (err, client, done) {
+        
+        if (err) {
+            
+            console.log("Não conseguiu acessar o BD :" + err);
+            res.status(400).send(`{${err}}`);
+        } else {
+            var q = {
+                text: 'select id, descricao, observacoes, valor_custo, ' +
+                'valor_aluguel, valor_venda ' +
+                'from Produtos ' +
+                'where id = $1 '+
+                'order by id asc;',
+                values: [req.params.id]
+            }
+            client.query(q, function (err, result) {
+                done();
+                if (err) {
+                    console.log('retornou 400 no insertproduto');
+                    console.log(err);
+                    res.status(400).send(`{${err}}`)
+                } else {
+                    console.log('retornou 201 no insertproduto');
+                    res.status(201).send(result.rows[0]);
+                }
+            });
+        }
+    })
+})
+
+
 sw.get('/listproduto', function (req, res) {
     postgres.connect(function (err, client, done) {
 
@@ -1255,6 +1470,40 @@ sw.put('/updateproduto', (req, res) => {
     });
 });
 
+sw.get('/foto/:id', function(req, res) {
+    postgres.connect(function (err, client, done) {
+        
+        if (err) {
+            
+            console.log("Não conseguiu acessar o BD :" + err);
+            res.status(400).send(`{${err}}`);
+        } else {
+            var q = {
+                text: 'select id, descricao, b64, produto_id, ' +
+                'produto_id from Fotos ' +
+                'where id = $1 '+
+                'order by id asc;' ,
+                values: [req.params.id]
+            }
+            client.query(q, function (err, result) {
+                done();
+                if (err) {
+                    console.log('retornou 400 no insertfoto');
+                    console.log(err);
+                    res.status(400).send(`{${err}}`)
+                } else {
+                    console.log('retornou 201 no insertfoto');
+                    res.status(201).send({
+                        "id": result.rows[0].id,
+                        "descricao": result.rows[0].descricao,
+                        "b64": result.rows[0].b64,
+                        "produto_id": result.rows[0].produto_id
+                    });
+                }
+            });
+        }
+    })
+})
 sw.get('/listfoto', function (req, res) {
 
     postgres.connect(function (err, client, done) {
@@ -1374,6 +1623,37 @@ sw.put('/updatefoto', (req, res) => {
     });
 });
 
+sw.get('/tiposproduto/:id', function(req, res) {
+    if (err) {
+            
+        console.log("Não conseguiu acessar o BD :" + err);
+        res.status(400).send(`{${err}}`);
+    } else {
+        var q = {
+            text: 'select id, nome ' +
+            'from tiposProduto ' +
+            'where id = $1'+
+            'order by id asc;' ,
+            values: [req.params.id]
+        }
+        client.query(q, function (err, result) {
+            done();
+            if (err) {
+                console.log('retornou 400 no insertfoto');
+                console.log(err);
+                res.status(400).send(`{${err}}`)
+            } else {
+                console.log('retornou 201 no insertfoto');
+                res.status(201).send({
+                    "id": result.rows[0].id,
+                    "descricao": result.rows[0].nome,
+                });
+            }
+        });
+    }
+})
+
+
 sw.get('/listtipoproduto', function (req, res) {
 
     postgres.connect(function (err, client, done) {
@@ -1483,6 +1763,38 @@ sw.put('/updatetipoproduto', (req, res) => {
     });
 });
 
+sw.get('/locacao/:id', function(req, res) {
+    postgres.connect(function(err, client, done) {
+        if (err) {
+            console.log("Não conseguiu acessar o banco de dados" + err);
+            res.status(400).send(`{${err}}`);
+        } else {
+            q = {
+                text: 'select id, '+
+                'to_char(data_retirada, \'dd/mm/yyyy\') as data_retirada, '+
+                'to_char(data_previsao_entrega, \'dd/mm/yyyy\') as data_previsao_entrega, '+
+                'to_char(data_entrega, \'dd/mm/yyyy\') as data_entrega, ' +
+                'to_char(data_previsao_pagamento, \'dd/mm/yyyy\') as data_previsao_pagamento, '+
+                'valor_total, valor_pago, observacoes, funcionario, tipos_pagamento, 0 as reservas ' +
+                'from locacoes ' +
+                'where id = $1 '+
+                'order by id;',
+                values: [req.params.id]
+            }
+            client.query(q, function (err, result) {
+                done();
+                if (err) {
+                    console.log('retornou 400 no locacao');
+                    console.log(err);
+                    res.status(400).send(`{${err}}`)
+                } else {
+                    console.log('retornou 201 no locacao');
+                    res.status(200).send(result.rows);
+                }
+            });
+        }
+    })
+})
 
 sw.get('/listlocacao', function (req, res) {
 
@@ -1689,7 +2001,36 @@ sw.put('/updatelocacao', (req, res) => {
     });
 });
 
-
+sw.get('/parcelamento/:id', function(req, res) {
+    postgres.connect(function(err, client, done) {
+        if (err) {
+            console.log("Não conseguiu acessar o banco de dados" + err);
+            res.status(400).send(`{${err}}`);
+        } else {
+            q = {
+                text: 'select id, numero_parcela, '+
+                'to_char(data_previsao_pagamento, \'dd/mm/yyyy\') as data_previsao_pagamento, '+
+                'to_char(data_pagamento, \'dd/mm/yyyy\') as data_pagamento, '+
+                 'valor_total, valor_pago, id_locacao ' +
+                'from parcelamentos ' +
+                'where id = $1 '+
+                 'order by id',
+                values: [req.params.id]
+            }
+            client.query(q, function (err, result) {
+                done();
+                if (err) {
+                    console.log('retornou 400 no parcelamento');
+                    console.log(err);
+                    res.status(400).send(`{${err}}`)
+                } else {
+                    console.log('retornou 201 no parcelamento');
+                    res.status(200).send(result.rows);
+                }
+            });
+        }
+    })
+})
 
 sw.get('/listparcelamento', function (req, res) {
 
@@ -1822,6 +2163,35 @@ sw.put('/updateparcelamento', (req, res) => {
     });
 });
 
+
+sw.get('/sitacao/:id', function(req, res) {
+    postgres.connect(function(err, client, done) {
+        if (err) {
+            console.log("Não conseguiu acessar o banco de dados" + err);
+            res.status(400).send(`{${err}}`);
+        } else {
+            q = {
+                text: 'select id, descricao ' +
+                'from sitacao ' +
+                'where id = $1 '+
+                'order by id ',
+                values: [req.params.id]
+            }
+            client.query(q, function (err, result) {
+                done();
+                if (err) {
+                    console.log('retornou 400 no sitacao');
+                    console.log(err);
+                    res.status(400).send(`{${err}}`)
+                } else {
+                    console.log('retornou 201 no sitacao');
+                    res.status(200).send(result.rows);
+                }
+            });
+        }
+    })
+})
+
 sw.get('/listsitacao', function (req, res) {
 
     postgres.connect(function (err, client, done) {
@@ -1932,6 +2302,36 @@ sw.put('/updatesitacao', (req, res) => {
         }
     });
 });
+
+sw.get('/acompanhamento/:id', function(req, res) {
+    postgres.connect(function(err, client, done) {
+        if (err) {
+            console.log("Não conseguiu acessar o banco de dados" + err);
+            res.status(400).send(`{${err}}`);
+        } else {
+            q = {
+                text: 'select id, sequencia_passo, '+
+                'to_char(data, \'dd/mm/yyyy\') as data, '+
+                'observacoes, id_sitacao, id_locacao ' +
+                'from acompanhamento ' +
+                'where id = $1 '+
+                'order by id; ',
+                values: [req.params.id]
+            }
+            client.query(q, function (err, result) {
+                done();
+                if (err) {
+                    console.log('retornou 400 no acompanhamento');
+                    console.log(err);
+                    res.status(400).send(`{${err}}`)
+                } else {
+                    console.log('retornou 201 no acompanhamento');
+                    res.status(200).send(result.rows);
+                }
+            });
+        }
+    })
+})
 
 sw.get('/listacompanhamento', function (req, res) {
 

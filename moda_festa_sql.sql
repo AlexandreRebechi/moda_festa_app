@@ -48,8 +48,7 @@ select f.id, f.descricao from funcionalidades f, perfis_funcionalidades pf where
 
 
 CREATE TABLE IF NOT EXISTS clientes(
-	cliente serial primary key not null,
-	cpf varchar(11) not null,
+	cpf varchar(11)  not null,
 	rg varchar(9) not null,
 	cnpj varchar(14) not null,
 	ie varchar(14) not null,
