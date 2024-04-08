@@ -37,8 +37,8 @@ sw.post('/login',function(req, res, next) {
            res.status(400).send('{'+err+'}');
         } else {
             var q={
-                text: 'select nickname, to_char(data_cadastro, \'yyyy-mm-dd\') as data_cadastro, situacao from usuario where nickname = $1 and senha = $2;',
-                values: [req.body.nickname, req.body.senha]
+                text: 'select cpf, to_char(data_cadastro, \'yyyy-mm-dd\') as data_cadastro, situacao from pessoas p  where cpf = $1 and password = $2;',
+                values: [req.body.cpf, req.body.password]
             }
             console.log(q);
 
@@ -52,7 +52,7 @@ sw.post('/login',function(req, res, next) {
                     
                     if (result.rows.length > 0) {
                         
-                        res.status(201).send({"nickname":  req.body.nickname, 'data_cadastro': result.rows[0].data_cadastro}) 
+                        res.status(201).send({"cpf":  req.body.cpf, 'data_cadastro': result.rows[0].data_cadastro}) 
                     } else {
                         
                         res.status(204).send();
@@ -77,9 +77,9 @@ sw.get('/cliente/:id', function(req, res) {
                 'p.logradouro, p.bairro, p.complemento, p.observacoes, ' +
                 'p.data_cadastro, ' +
                 'to_char(p.data_cadastro, \'dd/mm/yyyy\') as data_cadastro, ' +
-                'p.username, p.password, ' +
+                'p.username, p.cpf, p.password, ' +
                 'to_char(p.data_ultimo_login, \'dd/mm/yyyy\') as data_ultimo_login, ' +
-                'c.cpf, c.rg, c.cnpj, c.ie ' +
+                'c.rg, c.cnpj, c.ie ' +
                 'FROM pessoas p inner join clientes c on (p.id=c.id_pessoa) ' +
                 'where id = $1 order by p.id asc;',
                 values: [req.params.id]
@@ -104,9 +104,9 @@ sw.get('/cliente/:id', function(req, res) {
                         "complemento": result.rows[0].complemento,
                         "observacoes": result.rows[0].observacoes,
                         "username": result.rows[0].username,
+                        "cpf": result.rows[0].cpf,
                         "password": result.rows[0].password,
                         "cliente": {
-                            "cpf": result.rows[0].cpf,
                             "rg": result.rows[0].rg,
                             "cnpj": result.rows[0].cnpj,
                             "ie": result.rows[0].ie
@@ -132,9 +132,9 @@ sw.get('/listcliente', function (req, res) {
                 'p.logradouro, p.bairro, p.complemento, p.observacoes, ' +
                 'p.data_cadastro, ' +
                 'to_char(p.data_cadastro, \'dd/mm/yyyy\') as data_cadastro, ' +
-                'p.username, p.password, ' +
+                'p.username,p.cpf, p.password, p.tipo' +
                 ' to_char(p.data_ultimo_login, \'dd/mm/yyyy\') as data_ultimo_login, ' +
-                'c.cpf, c.rg, c.cnpj, c.ie ' +
+                'c.rg, c.cnpj, c.ie ' +
                 'FROM pessoas p inner join clientes c on (p.id=c.id_pessoa) ' +
                 'order by p.id asc;', function (err, result) {
                     done();
@@ -196,13 +196,14 @@ sw.post('/insertcliente', function (req, res, next) {
             res.status(400).send(`{${err}}`);
         } else {
             var q1 = {
-                text: 'insert into pessoas (nome, email, telefone, cep, logradouro, bairro, numero, complemento,observacoes, data_cadastro, username, password, data_ultimo_login) ' +
-                    'values($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), $10, $11, now()) ' +
+                text: 'insert into pessoas (nome, email, telefone, cep, logradouro, bairro, numero, complemento,observacoes, data_cadastro, username, cpf, password, data_ultimo_login, tipo) ' +
+                    'values($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), $10, $11, $12, now(), $13) ' +
                     'returning id, nome, email, telefone, cep, ' +
                     'logradouro, bairro, numero, complemento, observacoes, ' +
                     'to_char(data_cadastro, \'dd/mm/yyyy\') as data_cadastro, ' +
-                    'username, password, ' +
-                    'to_char(data_ultimo_login, \'dd/mm/yyyy\') as data_ultimo_login ',
+                    'username,cpf, password' +
+                    'to_char(data_ultimo_login, \'dd/mm/yyyy\') as data_ultimo_login, '+
+                    'tipo ',
                 values: [
                     req.body.nome,
                     req.body.email,
@@ -214,7 +215,9 @@ sw.post('/insertcliente', function (req, res, next) {
                     req.body.complemento,
                     req.body.observacoes,
                     req.body.username,
-                    req.body.password
+                    req.body.cpf,
+                    req.body.password,
+                    req.body.tipo == true ? "C" : "F"
                 ]
             }
         
@@ -223,18 +226,18 @@ sw.post('/insertcliente', function (req, res, next) {
 
             client.query(q1, function (err, result1) {
                 var q2 = {
-                    text: `insert into clientes (cpf, rg, cnpj, ie, id_pessoa) values ($1, $2, $3, $4, $5) returning cpf, rg, cnpj, ie;`,
+                    text: `insert into clientes (rg, cnpj, ie, id_pessoa) values ($1, $2, $3, $4) returning rg, cnpj, ie;`,
                     values: [
-                        req.body.cliente.cpf,
                         req.body.cliente.rg,
                         req.body.cliente.cnpj,
                         req.body.cliente.ie,
                         result1.rows[0].id
+                      
                         
                     ]
                 }
                 if (err) {
-                    console.log('retornou 400 no insert q1');
+                    console.log('retornou 400 no insert q1: '+err.message);
                     res.status(400).send(`{${err}}`);
                     
                 } else {
@@ -258,6 +261,7 @@ sw.post('/insertcliente', function (req, res, next) {
                                 "observacoes": result1.rows[0].observacoes,
                                 "username": result1.rows[0].username,
                                 "password": result1.rows[0].password,
+                                "tipo": result1.rows[0].tipo,
                                 "cliente": {
                                     "cpf": result2.rows[0].cpf,
                                     "rg": result2.rows[0].rg,
@@ -286,12 +290,12 @@ sw.post('/updatecliente', function (req, res, next) {
             var q1 = {
                 text: 'update pessoas set nome=$2, email=$3, telefone=$4, cep=$5, ' +
                     'logradouro=$6, bairro=$7, numero=$8, complemento=$9, observacoes = $10, ' +
-                    'username=$11, password=$12 where id=$1 ' +
+                    'username=$11, cpf=$12, password=$13, tipo = $14 where id=$1 ' +
                     'returning nome, email, telefone, cep, ' +
                     'logradouro, bairro, numero, complemento, observacoes, ' +
                     'to_char(data_cadastro, \'dd/mm/yyyy\') as data_cadastro, ' +
-                    'username, password, ' +
-                    'to_char(data_ultimo_login, \'dd/mm/yyyy\') as data_ultimo_login',
+                    'username,cpf, password, ' +
+                    'to_char(data_ultimo_login, \'dd/mm/yyyy\') as data_ultimo_login, tipo',
                 values: [
                     req.body.id,
                     req.body.nome,
@@ -304,7 +308,9 @@ sw.post('/updatecliente', function (req, res, next) {
                     req.body.complemento,
                     req.body.observacoes,
                     req.body.username,
-                    req.body.password
+                    req.body.cpf,
+                    req.body.password,
+                    req.body.tipo == true ? "C" : "F"
 
                 ]
             }
@@ -315,10 +321,9 @@ sw.post('/updatecliente', function (req, res, next) {
 
             client.query(q1, function (err, result1) {
                 var q2 = {
-                    text: `update clientes set cpf=$1, rg=$2, cnpj=$3, ie=$4 where id_pessoa=$5
-                           returning cpf, rg, cnpj, ie, id_pessoa `,
+                    text: `update clientes set rg=$1, cnpj=$2, ie=$3 where id_pessoa=$4
+                           returning rg, cnpj, ie, id_pessoa `,
                     values: [
-                        req.body.cpf,
                         req.body.rg,
                         req.body.cnpj,
                         req.body.ie,
@@ -354,10 +359,11 @@ sw.post('/updatecliente', function (req, res, next) {
                                 "observacoes": result1.rows[0].observacoes,
                                 "data_cadastro": result1.rows[0].data_cadastro,
                                 "username": result1.rows[0].username,
+                                "cpf": result1.rows[0].cpf,
                                 "password": result1.rows[0].password,
                                 "data_ultimo_login": result1.rows[0].data_ultimo_login,
+                                "tipo": result1.rows[0].tipo,
                                 "cliente": {
-                                    "cpf": result2.rows[0].cpf,
                                     "rg": result2.rows[0].rg,
                                     "cnpj": result2.rows[0].cnpj,
                                     "ie": result2.rows[0].ie,
@@ -383,8 +389,8 @@ sw.get('/listfuncionario', function (req, res) {
                 'p.logradouro, p.bairro, p.complemento, p.observacoes, '+
                 'p.data_cadastro, '+
                 'to_char(p.data_cadastro, \'dd/mm/yyyy\') as data_cadastro, '+
-                'p.username, p.password, '+
-                'to_char(p.data_ultimo_login, \'dd/mm/yyyy\') as data_ultimo_login, '+
+                'p.username, p.cpf, p.password, '+
+                'to_char(p.data_ultimo_login, \'dd/mm/yyyy\') as data_ultimo_login, p.tipo, '+
                 'f.numero_ctps,to_char(f.data_contratacao, \'dd/mm/yyyy\') as data_contratacao, to_char(f.data_demissao, \'dd/mm/yyyy\') as data_demissao, f.perfil ' +
                 'FROM pessoas p inner join funcionarios f on (p.id=f.id_pessoa) '+ 
                 'order by p.id asc;', function (err, result) {
@@ -439,13 +445,13 @@ sw.post('/insertfuncionario', function (req, res, next) {
             res.status(400).send(`{${err}}`);
         } else {
             var q1 = {
-                text: 'insert into pessoas (nome, email, telefone, cep, logradouro, bairro, numero, complemento, observacoes, data_cadastro, username, password, data_ultimo_login) ' +
-                    'values($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), $10, $11, now()) ' +
+                text: 'insert into pessoas (nome, email, telefone, cep, logradouro, bairro, numero, complemento, observacoes, data_cadastro, username, cpf, password, data_ultimo_login, tipo) ' +
+                    'values($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), $10, $11, $12, $13 now()) ' +
                     'returning nome, email, telefone, cep, ' +
                     'logradouro, bairro, numero, complemento, observacoes, ' +
                     'to_char(data_cadastro, \'dd/mm/yyyy\') as data_cadastro, ' +
-                    'username, password, ' +
-                    'to_char(data_ultimo_login, \'dd/mm/yyyy\') as data_ultimo_login ',
+                    'username,cpf password, ' +
+                    'to_char(data_ultimo_login, \'dd/mm/yyyy\') as data_ultimo_login, tipo ',
                 values: [
                     req.body.nome,
                     req.body.email,
@@ -457,7 +463,9 @@ sw.post('/insertfuncionario', function (req, res, next) {
                     req.body.complemento,
                     req.body.observacoes,
                     req.body.username,
-                    req.body.password
+                    req.body.cpf,
+                    req.body.password.
+                    req.body.tipo
                 ]
             }
             var q2 = {
@@ -500,8 +508,10 @@ sw.post('/insertfuncionario', function (req, res, next) {
                                 "observacoes": result1.rows[0].observacoes,
                                 "data_cadastro": result1.rows[0].data_cadastro,
                                 "username": result1.rows[0].username,
+                                "cpf": result1.rows[0].cpf,
                                 "password": result1.rows[0].password,
                                 "data_ultimo_login": result1.rows[0].data_ultimo_login,
+                                "tipo": result1.rows[0].tipo,
                                 "funcionario": {
                                     "numero_ctps": result2.rows[0].numero_ctps,
                                     "data_contratacao": result2.rows[0].data_contratacao,
@@ -529,12 +539,12 @@ sw.put('/updatefuncionario', function (req, res, next) {
             var q1 = {
                 text: 'update pessoas set nome=$2, email=$3, telefone=$4, cep=$5, ' +
                     'logradouro=$6, bairro=$7, numero=$8, complemento=$9, observacoes = $10, ' +
-                    'username=$11, password=$12 where id=$1 ' +
+                    'username=$11, cpf=$12 password=$13, tipo=$14 where id=$1 ' +
                     'returning nome, email, telefone, cep, ' +
                     'logradouro, bairro, numero, complemento, observacoes, ' +
                     'to_char(data_cadastro, \'dd/mm/yyyy\') as data_cadastro, ' +
-                    'username, password, ' +
-                    'to_char(data_ultimo_login, \'dd/mm/yyyy\') as data_ultimo_login',
+                    'username,cpf, password, ' +
+                    'to_char(data_ultimo_login, \'dd/mm/yyyy\') as data_ultimo_login, tipo',
                 values: [
                     req.body.id,
                     req.body.nome,
@@ -547,7 +557,10 @@ sw.put('/updatefuncionario', function (req, res, next) {
                     req.body.complemento,
                     req.body.observacoes,
                     req.body.username,
-                    req.body.password
+                    req.body.cpf,
+                    req.body.password,
+                    req.body.tipo
+
 
                 ]
             }
@@ -595,8 +608,10 @@ sw.put('/updatefuncionario', function (req, res, next) {
                                 "observacoes": result1.rows[0].observacoes,
                                 "data_cadastro": result1.rows[0].data_cadastro,
                                 "username": result1.rows[0].username,
+                                "cpf": result1.rows[0].cpf,
                                 "password": result1.rows[0].password,
                                 "data_ultimo_login": result1.rows[0].data_ultimo_login,
+                                "tipo": result1.rows[0].tipo,
                                 "funcionario": {
                                     "numero_ctps": result2.rows[0].numero_ctps,
                                     "data_contratacao": result2.rows[0].data_contratacao,
