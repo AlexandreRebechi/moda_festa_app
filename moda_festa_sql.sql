@@ -1,4 +1,5 @@
 
+
 CREATE TABLE IF NOT EXISTS pessoas(
 	id serial primary key  not null,
 	nome varchar(100) not null,
@@ -10,10 +11,12 @@ CREATE TABLE IF NOT EXISTS pessoas(
 	numero varchar(50) not null,
 	complemento varchar(50) not null,
 	observacoes varchar(300) not null,
-	data_cadastro date not null,
+	data_cadastro TIMESTAMP not null,
 	username varchar(50) not null,
+	cpf varchar(14) not null,
 	password varchar(6) not null,
-	data_ultimo_login date not null		
+	data_ultimo_login TIMESTAMP not null,
+	tipo char(1) not null check(tipo = 'C' or tipo = 'F')
 );
 SELECT p.nome,p.email, p.telefone, p.cep,
                 p.logradouro, p.bairro, p.complemento, p.observacoes, 
@@ -48,7 +51,6 @@ select f.id, f.descricao from funcionalidades f, perfis_funcionalidades pf where
 
 
 CREATE TABLE IF NOT EXISTS clientes(
-	cpf varchar(11)  not null,
 	rg varchar(9) not null,
 	cnpj varchar(14) not null,
 	ie varchar(14) not null,
@@ -204,4 +206,3 @@ CREATE TABLE usuario(
 )
 
 insert into usuario(nickname, senha, data_cadastro, situacao) values('alexandre', '1234', '2024/03/13', 'A')
-
