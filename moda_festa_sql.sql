@@ -1,7 +1,7 @@
 
 
 CREATE TABLE IF NOT EXISTS pessoas(
-	id serial primary key  not null,
+	cpf varchar(14) primary key not null,
 	nome varchar(100) not null,
 	email varchar(100) not null,
 	telefone varchar(15) not null,
@@ -13,11 +13,17 @@ CREATE TABLE IF NOT EXISTS pessoas(
 	observacoes varchar(300) not null,
 	data_cadastro TIMESTAMP not null,
 	username varchar(50) not null,
-	cpf varchar(14) not null,
 	password varchar(6) not null,
 	data_ultimo_login TIMESTAMP not null,
 	tipo char(1) not null check(tipo = 'C' or tipo = 'F')
 );
+
+insert into pessoas (cpf, nome, email, telefone, cep, logradouro, bairro, numero, complemento,observacoes, data_cadastro, username, password, data_ultimo_login, tipo) 
+                    values('83183140004', 'nome_cliente1', 'teste_cliente1@email', '1223456798', '345435', 'logradouro1', 'bairro_cliente1', '7575756', 'complemento1', 'observacoes1', now(), 'username_cliente1', '1234', now(), 'C') 
+
+insert into clientes (rg, cnpj, ie, cpf_pessoa, tipo) values ('303897296','28949295000166', '5955110719', '83183140004', 'J') returning rg, cnpj, ie
+
+
 SELECT p.nome,p.email, p.telefone, p.cep,
                 p.logradouro, p.bairro, p.complemento, p.observacoes, 
                 to_char(p.data_cadastro, 'dd/mm/yyyy') as data_cadastro, 
@@ -51,21 +57,22 @@ select f.id, f.descricao from funcionalidades f, perfis_funcionalidades pf where
 
 
 CREATE TABLE IF NOT EXISTS clientes(
-	rg varchar(9) not null,
-	cnpj varchar(14) not null,
-	ie varchar(14) not null,
-	id_pessoa integer not null,
-	foreign key (id_pessoa) references pessoas (id)
+	rg varchar(9),
+	cnpj varchar(14),
+	ie varchar(14),
+	cpf_pessoa varchar(14),
+	tipo char(1) not null check(tipo = 'F' or tipo = 'J'),
+	foreign key (cpf_pessoa) references pessoas (cpf)
 );
 
 
 CREATE TABLE IF NOT EXISTS funcionarios (
 	numero_ctps varchar(50) not null,
-	data_contratacao date not null,
-	data_demissao date not null,
+	data_contratacao TIMESTAMP not null,
+	data_demissao TIMESTAMP not null,
 	perfil integer not null,
-	id_pessoa integer not null,
-	foreign key (id_pessoa) references pessoas (id),
+	cpf_pessoa varchar(14) not null,
+	foreign key (cpf_pessoa) references pessoas (cpf),
 	foreign key (perfil) references perfis (id)
 ); 
 
