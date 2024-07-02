@@ -230,7 +230,7 @@ sw.post('/insertcliente', function (req, res, next) {
             console.log(q1);
 
             var q2 = {
-                text: `insert into clientes (rg, cnpj, ie, tipo, cpf_pessoa) values ($1, $2, $3, $4, $5) returning  rg, cnpj, ie, tipo;`,
+                text: `insert into clientes (rg, cnpj, ie, cpf_pessoa, tipo) values ($1, $2, $3, $4, $5) returning  rg, cnpj, ie, tipo;`,
                 values: [
                     req.body.cliente.rg,
                     req.body.cliente.cnpj,
@@ -1284,7 +1284,7 @@ sw.post('/insertreserva', function (req, res, next) {
 
                 if (err) {
                     console.log('retornou 400 no insert');
-                    console.log(err);
+                    console.log('erro insert reserva: '+err.message);
                 } else {
                     for (let index = 0; index < req.body.produtos.length; index++) {
 
